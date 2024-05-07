@@ -1,6 +1,1 @@
-__pycache__/CanvasSpikes.cpython-312.pyc
-__pycache__/loader.cpython-312.pyc
-__pycache__/lod_manager.cpython-312.pyc
-__pycache__/plot.cpython-312.pyc
-__pycache__/theme.cpython-312.pyc
-__pycache__/themes.cpython-312.pyc
+__pycache__/*.pyc
