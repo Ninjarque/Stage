@@ -146,6 +146,8 @@ class PlotCurve:
         self.draw()
 
     def update_mouse(self, axes, posx, posy, moved_too_much, click_pressed, click_released):
+        if axes != self.plot:
+            axes = None
         if axes and not self.selected_line and not self.hovered_line:
             mouse_dist = self.get_distance_to_curve(posx, posy)
             #print(mouse_dist)

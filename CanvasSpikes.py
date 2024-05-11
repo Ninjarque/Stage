@@ -40,9 +40,12 @@ class CanvasSpikes:
         x_data.sort()
         for x in x_data:
             line = self.ax.axvline(x=x, color=color, linestyle=self.linestyle)
+            line.set_zorder(10)
+            line.set_visible(True)
             self.spikes.append(line)
 
     def update_spikes(self, x_data):
+        '''
         if len(x_data) != len(self.spikes):
             # If the number of spikes has changed, recreate them
             self.create_spikes(x_data)
@@ -51,6 +54,16 @@ class CanvasSpikes:
             # Otherwise, just update their positions
             for line, x in zip(self.spikes, x_data):
                 line.set_xdata([x, x])
+                line.set_zorder(10)
+                line.set_visible(True)
+        self.ax.relim()  # Recalculate limits
+        self.ax.autoscale_view()  # Auto-scale view based on limits
+        '''
+            # Assuming that spikes need to be updated completely every time
+        self.clear_spikes()  # Remove old spikes first
+        self.create_spikes(x_data)  # Create new spikes
+        self.ax.figure.canvas.draw()  # Redraw the canvas to update the view
+
 
     def clear_spikes(self):
         for line in self.spikes:

@@ -89,7 +89,8 @@ class LODBarManager:
 
     def get_compressed_data(self, data):
         imin = self.nearest_datax_index(self.x_min, data)
-        imax = self.nearest_datax_index(self.x_max, data)
+        imax = self.nearest_datax_index(self.x_max, data) + 1
+        imax = min(imax, len(data) - 1)
         data = data[imin:imax]
 
         if len(data) > self.max_displayed_data:
@@ -101,6 +102,8 @@ class LODBarManager:
     def nearest_datax_index(self, posx, data):
         #dycotomy time
         max = len(data)
+        if max == 0:
+            return 0
         a = 0
         b = max - 1
         center = int((a + b) / 2)
