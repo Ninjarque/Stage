@@ -126,25 +126,16 @@ class GUI:
         data1_x, data1_y = self.get_data1()
         data2_x, data2_y = self.get_data2()
 
-        spikes_data1 = self.get_spikes_data1()
-        spikes_data2 = self.get_spikes_data2()
-
-        data1_x = data1_x[::2]
-        data1_y = data1_y[::2]
-
-        data2_x = data2_x[::2]
-        data2_y = data2_y[::2]
-
-        spikes_data1 = spikes_data1[::1]
-        spikes_data2 = spikes_data2[::1]
+        spikes_data1, spikes_xdata1 = self.get_spikes_data1()
+        spikes_data2, spikes_xdata2 = self.get_spikes_data2()
 
         # creating the Tkinter canvas containing the Matplotlib figure
         self.canvas = FigureCanvasTkAgg(fig, master=self.master)
         self.canvas.draw()
 
         self.bars = [
-        CanvasSpikes(self.bars_plot, spikes_data1, DefaultTheme.get_palette("bars1")),
-        CanvasSpikes(self.bars_plot, spikes_data2, DefaultTheme.get_palette("bars2")),
+        CanvasSpikes(self.bars_plot, spikes_data1, spikes_xdata1, DefaultTheme.get_palette("bars1")),
+        CanvasSpikes(self.bars_plot, spikes_data2, spikes_xdata2, DefaultTheme.get_palette("bars2")),
         ]
 
         self.plots = [
@@ -229,6 +220,14 @@ class GUI:
                                 False, False)
             if rcode != CODE_NONE:
                 need_redraw = True
+        
+        for bar in self.bars:
+            r = bar.update_mouse(event.inaxes, event.xdata, event.ydata, self.moved_too_much, 
+                            False, False)
+            if r != CODE_NONE:
+                rcode = r
+            if rcode != CODE_NONE:
+                need_redraw = True
         if need_redraw:
             self.canvas.draw()
 
@@ -250,6 +249,10 @@ class GUI:
                     dont_need_update = True
                     self.select(plot)
             plot.draw()
+        for bar in self.bars:
+            bar.update_mouse(event.inaxes, event.xdata, event.ydata, self.moved_too_much, 
+                                    correctClick, False)
+            bar.draw()
         
         self.canvas.draw()
     
@@ -258,6 +261,13 @@ class GUI:
         for plot in self.plots:
             if event.inaxes and event.button == 1:
                 rcode = plot.update_mouse(event.inaxes, event.xdata, event.ydata, self.moved_too_much, 
+                                False, correctClick)
+                if rcode == CODE_UNSELECTED_LINE or rcode == CODE_NONE:
+                    self.enable_navigation()
+            plot.draw()
+        for bar in self.bars:
+            if event.inaxes and event.button == 1:
+                rcode = bar.update_mouse(event.inaxes, event.xdata, event.ydata, self.moved_too_much, 
                                 False, correctClick)
                 if rcode == CODE_UNSELECTED_LINE or rcode == CODE_NONE:
                     self.enable_navigation()
@@ -271,12 +281,18 @@ class GUI:
         for plot in self.plots:
             plot.update_key(event.key, True, False)
             plot.draw()
+        for bar in self.bars:
+            bar.update_key(event.key, True, False)
+            bar.draw()
 
         self.canvas.draw()
     def on_key_release(self, event):
         for plot in self.plots:
             plot.update_key(event.key, False, True)
             plot.draw()
+        for bar in self.bars:
+            bar.update_key(event.key, False, True)
+            bar.draw()
 
         self.canvas.draw()
 
@@ -335,11 +351,11 @@ class GUI:
     def get_spikes_data1(self):
         bars = loader.parse_ASG("")
         values = [b.x for b in bars]
-        return values
+        return bars, values
     def get_spikes_data2(self):
         bars = loader.parse_T("")
         values = [b.x for b in bars]
-        return values
+        return bars, values
 
     
     def disable_navigation(self):
