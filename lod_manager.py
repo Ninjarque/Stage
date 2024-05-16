@@ -87,19 +87,27 @@ class LODBarManager:
 
         return changed
 
-    def get_compressed_data(self, data, xdata):
+    def get_compressed_data(self, xdata, *data_lists):
         imin = self.nearest_datax_index(self.x_min, xdata)
         imax = self.nearest_datax_index(self.x_max, xdata) + 1
-        imax = min(imax, len(data) - 1)
-        data = data[imin:imax]
-        xdata = xdata[imin:imax]
-
-        if len(data) > self.max_displayed_data:
-            l = int(len(data) / self.max_displayed_data)
-            data = data[::l]
-            xdata = xdata[::l]
+        imax = min(imax, len(xdata) - 1)
         
-        return data, xdata
+        xdata = xdata[imin:imax]
+        compressed_data_lists = [xdata]
+        
+        for data in data_lists:
+            data = data[imin:imax]
+            if len(data) > self.max_displayed_data:
+                l = int(len(data) / self.max_displayed_data)
+                data = data[::l]
+            compressed_data_lists.append(data)
+        
+        if len(xdata) > self.max_displayed_data:
+            l = int(len(xdata) / self.max_displayed_data)
+            xdata = xdata[::l]
+            compressed_data_lists[0] = xdata
+        
+        return tuple(compressed_data_lists)
     
     def nearest_datax_index(self, posx, data):
         #dycotomy time
@@ -126,4 +134,5 @@ class LODBarManager:
             center = int((a + b) / 2)
             it = it + 1
 
+        return center
         return center
