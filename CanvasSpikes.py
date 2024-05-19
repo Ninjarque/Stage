@@ -89,10 +89,14 @@ class CanvasSpikes:
         if axes != self.ax:
             axes = None
         if not self.enabled:
-            if self.selected_lines or self.hovered_lines:
+            if self.selected_lines:
+                for line in self.selected_lines:
+                    line.set_color("black")
                 self.selected_lines = []
+            if self.hovered_lines:
+                for line in self.hovered_lines:
+                    line.set_color("black")
                 self.hovered_lines = []
-                self.draw()
             return CODE_NONE
 
         rcode = CODE_NONE
@@ -102,8 +106,6 @@ class CanvasSpikes:
             if self.hovered_lines:
                 for line in self.hovered_lines:
                     line.set_color("black")
-
-                pass
             if self.hovered_lines != closest_lines:
                 rcode = CODE_HOVERED_LINE
             self.hovered_lines = closest_lines
