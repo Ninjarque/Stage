@@ -9,7 +9,7 @@ class CanvasSpikes:
         self.linestyle = linestyle
         self.spikes = []
         self.spikes_data = spikes_data
-        self.displayed_spikes = spikes_data
+        self.spikes_data.sort(key=lambda spike: spike.x)
 
         self.linked_graph = None
 
@@ -41,21 +41,15 @@ class CanvasSpikes:
 
 
     def create_spikes(self, x_data):
-        # Clear existing lines if any
-        for line in self.spikes:
-            line.remove()
-        self.spikes = []
-
+        self.clear_spikes()  # Clear existing spikes first
         color = self.color_palette.get_color(PALETTE_OBJECT_BAR, PALETTE_PROPERTY_PLOT_ENABLED)
         if not self.enabled:
             color = self.color_palette.get_color(PALETTE_OBJECT_BAR, PALETTE_PROPERTY_PLOT_DISABLED)
 
-        # Create new lines
         x_data.sort()
         for x in x_data:
             line = self.ax.axvline(x=x, color=color, linestyle=self.linestyle)
             line.set_zorder(10)
-            line.set_visible(True)
             self.spikes.append(line)
             self.spike_mapping[x] = line  # Update the mapping
 
@@ -87,13 +81,14 @@ class CanvasSpikes:
 
     def update_mouse(self, axes, posx, posy, moved_too_much, click_pressed, click_released):
         if axes != self.ax:
-            axes = None
+            return CODE_NONE
+
         if not self.enabled:
-            if self.selected_lines:
+            if self.selected_lines != []:
                 for line in self.selected_lines:
                     line.set_color("black")
                 self.selected_lines = []
-            if self.hovered_lines:
+            if self.hovered_lines != []:
                 for line in self.hovered_lines:
                     line.set_color("black")
                 self.hovered_lines = []
@@ -103,18 +98,17 @@ class CanvasSpikes:
 
         if not self.selected_lines and axes:
             closest_lines = self.get_closest_lines(posx, posy)
-            if self.hovered_lines:
-                for line in self.hovered_lines:
-                    line.set_color("black")
-            if self.hovered_lines != closest_lines:
-                rcode = CODE_HOVERED_LINE
-            self.hovered_lines = closest_lines
-            if self.hovered_lines:
-                rcode = CODE_HOVERED_LINE
-                for line in self.hovered_lines:
-                    line.set_color("yellow")
-                pass
-            else:
+            if closest_lines:
+                if self.hovered_lines:
+                    for line in self.hovered_lines:
+                        line.set_color("black")
+                if self.hovered_lines != closest_lines:
+                    rcode = CODE_HOVERED_LINE
+                self.hovered_lines = closest_lines
+                if self.hovered_lines:
+                    rcode = CODE_HOVERED_LINE
+                    for line in self.hovered_lines:
+                        line.set_color("yellow")
                 self.draw()
 
         return rcode
@@ -134,43 +128,24 @@ class CanvasSpikes:
 
     def get_closest_lines(self, posx, posy):
         closest_lines = []
-        if not posx or not posy:
+        if posx is None or posy is None:
             return closest_lines
+
         dists_lst = []
-        index_lst = []
-
-        line_hover_precision = 0.02
-
-        '''
-        for i in range(len(self.displayed_spikes)):
-            bar = self.displayed_spikes[i]
-            dist = abs(bar.x - posx)
-            if dist < line_hover_precision * self.x_range:  # Threshold to select a line
-                curr_dist = None
-                index_lst = 0
-                if len(dists_lst) != 0:
-                    curr_dist = dists_lst[0]
-                while index_lst < len(dists_lst) and curr_dist < dist:
-                    curr_dist = dists_lst[index_lst]
-                    index_lst += 1
-                dists_lst.insert(index_lst, dist)
-                closest_lines.insert(index_lst, i)
-        '''
-
-        for i, bar in enumerate(self.displayed_data):
+        line_hover_precision = 0.01
+        for bar in self.displayed_data:
             line = self.spike_mapping.get(bar.x)  # Use the mapping
             if line:
                 dist = abs(bar.x - posx)
                 if dist < line_hover_precision * self.x_range:  # Threshold to select a line
-                    dists_lst.append(dist)
-                    closest_lines.append(line)
+                    dists_lst.append((dist, line))
 
-        if not closest_lines:
+        if not dists_lst:
             return []
-        
-        # Combine the lists, sort by distance, and separate them again
-        combined = sorted(zip(dists_lst, closest_lines))
-        dists_lst, closest_lines = zip(*combined)  # This will sort dists_lst and reorder closest_lines accordingly
+
+        # Sort by distance
+        dists_lst.sort(key=lambda x: x[0])
+        closest_lines = [line for _, line in dists_lst]
 
         return closest_lines
 
@@ -183,7 +158,7 @@ class CanvasSpikes:
         if graph:
             graph.link_plotbar(self)
             self.lod = LODBarManager(graph.plot, len(self.x_data), self.max_bars_rendered)
-            dx, self.displayed_data, self.displayed_spikes = self.lod.get_compressed_data(self.x_data, self.spikes_data, self.spikes)
+            dx, self.displayed_data = self.lod.get_compressed_data(self.x_data, self.spikes_data)
             self.update_spikes(dx)
 
     def enable(self):
@@ -197,6 +172,6 @@ class CanvasSpikes:
 
     def draw(self):
         if self.lod.update():
-            dx, self.displayed_data, self.displayed_spikes = self.lod.get_compressed_data(self.x_data, self.spikes_data, self.spikes)
+            dx, self.displayed_data = self.lod.get_compressed_data(self.x_data, self.spikes_data)
             self.update_spikes(dx)
         pass

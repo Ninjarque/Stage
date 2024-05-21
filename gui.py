@@ -174,7 +174,7 @@ class GUI:
             bar_i += 1
 
         #graphs_plot.callbacks.connect('xlim_changed', self.on_xlims_change_graph)
-        self.graphs_plot.callbacks.connect('ylim_changed', self.on_ylims_change_graph)
+        self.graphs_plot.callbacks.connect('ylim_changed', self.on_ylims_change)
         
         # Connect xlim changes
         self.bars_plot.callbacks.connect('xlim_changed', lambda ax: self.on_xlims_change(ax, self.graphs_plot))
@@ -296,16 +296,7 @@ class GUI:
 
         self.canvas.draw()
 
-    def on_xlims_change_graph(self, event_ax):
-        minx = event_ax.get_xlim()[0];
-        maxx = event_ax.get_xlim()[1];
-        miny = event_ax.get_ylim()[0];
-        maxy = event_ax.get_ylim()[1];
-        for plot in self.plots:
-            plot.update_limits(minx, maxx, miny, maxy)
-
-        self.canvas.draw()
-    def on_ylims_change_graph(self, event_ax):
+    def on_ylims_change(self, event_ax):
         minx = event_ax.get_xlim()[0];
         maxx = event_ax.get_xlim()[1];
         miny = event_ax.get_ylim()[0];
@@ -334,7 +325,12 @@ class GUI:
             for plot in self.plots:
                 plot.update_limits(minx, maxx, miny, maxy)
         if source_ax == self.bars_plot:
+            minx = source_ax.get_xlim()[0];
+            maxx = source_ax.get_xlim()[1];
+            miny = source_ax.get_ylim()[0];
+            maxy = source_ax.get_ylim()[1];
             for bar in self.bars:
+                bar.update_limits(minx, maxx, miny, maxy)
                 bar.draw()
 
         self.canvas.draw()
