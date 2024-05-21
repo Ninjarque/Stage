@@ -1,5 +1,7 @@
 from math import *
 
+import dichotomy
+
 LOD_RECOMPUTE_RATIO_THRESHOLD = 0.1
 
 class LODCurveManager:
@@ -26,8 +28,8 @@ class LODCurveManager:
         return changed
 
     def get_compressed_data(self, datax, datay):
-        imin = self.nearest_datax_index(self.x_min, datax)
-        imax = self.nearest_datax_index(self.x_max, datax)
+        imin = dichotomy.nearest_index(self.x_min, datax)
+        imax = dichotomy.nearest_index(self.x_max, datax)
 
         datax = datax[imin:imax]
         datay = datay[imin:imax]
@@ -38,31 +40,6 @@ class LODCurveManager:
             datay = datay[::l]
         
         return datax, datay
-    
-    def nearest_datax_index(self, posx, data):
-        #dycotomy time
-        max = len(data)
-        a = 0
-        b = max - 1
-        center = int((a + b) / 2)
-        lst_center = -1
-
-        if data[a] > posx:
-            return a
-        if data[b] < posx:
-            return b
-
-        it = 0
-        while center != lst_center:
-            if data[center] > posx:
-                b = center
-            else:
-                a = center
-            lst_center = center
-            center = int((a + b) / 2)
-            it = it + 1
-
-        return center
 
 class LODBarManager:
     def __init__(self, ax, data_len, max_displayed_data):
@@ -88,8 +65,8 @@ class LODBarManager:
         return changed
 
     def get_compressed_data(self, xdata, *data_lists):
-        imin = self.nearest_datax_index(self.x_min, xdata)
-        imax = self.nearest_datax_index(self.x_max, xdata) + 1
+        imin = dichotomy.nearest_index(self.x_min, xdata)
+        imax = dichotomy.nearest_index(self.x_max, xdata) + 1
         imax = min(imax, len(xdata) - 1)
         
         xdata = xdata[imin:imax]
@@ -108,31 +85,3 @@ class LODBarManager:
             compressed_data_lists[0] = xdata
         
         return tuple(compressed_data_lists)
-    
-    def nearest_datax_index(self, posx, data):
-        #dycotomy time
-        max = len(data)
-        if max == 0:
-            return 0
-        a = 0
-        b = max - 1
-        center = int((a + b) / 2)
-        lst_center = -1
-
-        if data[a] > posx:
-            return a
-        if data[b] < posx:
-            return b
-
-        it = 0
-        while center != lst_center:
-            if data[center] > posx:
-                b = center
-            else:
-                a = center
-            lst_center = center
-            center = int((a + b) / 2)
-            it = it + 1
-
-        return center
-        return center

@@ -10,7 +10,7 @@ from matplotlib.gridspec import GridSpec
 MAINTAIN THOSE IMPORTS UP TO DATE PLS
 '''
 import loader
-from plot import *
+from PlotCurve import *
 from themes import *
 from CanvasSpikes import *
 

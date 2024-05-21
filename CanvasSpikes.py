@@ -1,6 +1,6 @@
 import matplotlib.pyplot as plt
 
-from plot import *
+from PlotCurve import *
 from lod_manager import *
 
 class CanvasSpikes:

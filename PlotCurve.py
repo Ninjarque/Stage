@@ -9,6 +9,8 @@ import loader
 from theme import *
 from lod_manager import *
 
+import dichotomy
+
 CODE_NONE = 0
 CODE_ADDING_LINE = 1
 CODE_REMOVING_LINE = 2
@@ -305,7 +307,7 @@ class PlotCurve:
         rx, ry = 1, 1/self.y_range
 
         # Find indexes nearest to posx
-        indexes_nearest_x = self.nearest_datax_indexes(posx)
+        indexes_nearest_x = dichotomy.nearest_indexes(posx, self.datax, PLOT_MOUSE_INDEXES_DISTANCE_CHECKS)
         dist_nearest = float('inf')
         closest_point = (None, None)
 
@@ -430,13 +432,13 @@ class PlotCurve:
             y = []
 
             if self.range_mode == RANGE_MODE_FULL:
-                startCl = self.nearest_datax_index(r.start_pos)
-                endCl = self.nearest_datax_index(r.end_pos) + 1
+                startCl = dichotomy.nearest_index(r.start_pos, self.datax)
+                endCl = dichotomy.nearest_index(r.end_pos, self.datax) + 1
                 x = self.datax[startCl:endCl]
                 y = self.datay[startCl:endCl]
             if self.range_mode == RANGE_MODE_CLUSTERS:
-                startCl = self.nearest_cluster_index(r.start_pos)
-                endCl = self.nearest_cluster_index(r.end_pos) + 1
+                startCl = dichotomy.nearest_cluster_index(r.start_pos, self.spikes_clusters)
+                endCl = dichotomy.nearest_cluster_index(r.end_pos, self.spikes_clusters) + 1
                 x, y = loader.graph_DPT(self.spikes_clusters[startCl:endCl])
             total_gx.extend(x)
             total_gy.extend(y)

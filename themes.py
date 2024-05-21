@@ -1,7 +1,7 @@
 from theme import *
 
 
-from plot import *
+from PlotCurve import *
 
 
 DefaultTheme = Theme(
