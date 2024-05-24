@@ -72,11 +72,11 @@ class SpikeCluster:
         self.spikesY = spikesY
         self.bars = bars
 
-    def is_over_noise_threshold(self, threshold=DPT_NOISE_Y_THRESHOLD):
-        max_ratio = 0.7
-        mean_ratio = 0.3
+    def is_over_noise_threshold(self, threshold_ratio=1.0, mean_or_max_ratio = 0.5):
+        max_ratio = 1.0 - mean_or_max_ratio
+        mean_ratio = mean_or_max_ratio
         m = (np.max(self.spikesY) * max_ratio + np.mean(self.spikesY) * mean_ratio) / (max_ratio + mean_ratio)
-        return m > threshold
+        return m > threshold_ratio * DPT_NOISE_Y_THRESHOLD
 
 
 class SpikeTree:

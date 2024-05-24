@@ -5,6 +5,8 @@ from matplotlib.backends.backend_tkagg import (FigureCanvasTkAgg,
 NavigationToolbar2Tk)
 from matplotlib.gridspec import GridSpec
 
+import MatchCandidatesGenerator
+from FeatureExtractor import *
 
 '''
 MAINTAIN THOSE IMPORTS UP TO DATE
@@ -88,6 +90,8 @@ class GUI:
 
         self.plot()
 
+        self.test()
+
     def toggle_curves(self):
         if len(self.plots) == 0:
             return
@@ -101,17 +105,74 @@ class GUI:
         plot_i = (plot_i + 1) % len(self.plots)
         self.select(self.plots[plot_i])
 
+    def test(self):
+        self.plots[1].set_ranges([(1032.110, 1032.125)])
+        self.plots[0].set_ranges([(1032.020, 1032.160)])
+
     def match_regions(self):
+        if len(self.plots) > 1:
+            target_plot_index = 1
+            current_plot_index = 0
+            '''
+            for plot in self.plots:
+                if plot.enabled:
+                    break
+                target_plot_index += 1
+            for plot in self.plots:
+                if not plot.enabled:
+                    break
+                current_plot_index += 1
+            '''
+            target_plot = self.plots[target_plot_index]
+            current_plot = self.plots[current_plot_index]
+
+            target_rangex, target_rangey, target_clusters = target_plot.get_ranges()
+            current_rangex, current_rangey, current_clusters = current_plot.get_ranges()
+            if not target_clusters or not current_clusters:
+                print("wut target_clusters/current_clusters?")
+                return
+            candidates = MatchCandidatesGenerator.generate(target_clusters, current_clusters)
+            if not candidates:
+                print("wut candidate?")
+                return
+            #print(candidates)
+            featureExtractor = RandomFeatureExtractor(50, 400)
+            for candidate in candidates.keys():
+                current_chunks_list = candidates[candidate]
+                list_x = []
+                list_y = []
+                #print("current_chunks_list", current_chunks_list)
+                for current_chunks in current_chunks_list:
+                    cx = [chunk.spikesX for chunk in current_chunks]
+                    cy = [chunk.spikesY for chunk in current_chunks]
+                    rx = []
+                    for x in cx:
+                        rx.extend(x)
+                    ry = []
+                    for y in cy:
+                        ry.extend(y)
+                    print("adding chunk [", rx[0], ",", rx[-1], "]")
+                    list_x.append(rx)
+                    list_y.append(ry)
+                    pass
+                bestMatch = featureExtractor.match(candidate.spikesX, candidate.spikesY, list_x, list_y)
+                lx = list_x[bestMatch]
+                ly = list_y[bestMatch]
+                #print("list_x", list_x)
+                #print("lx", lx)
+                current_plot.set_ranges([(lx[0], lx[-1])])
+        '''
         i = 0
         for plot in self.plots:
             if plot.enabled:
                 rangex, rangey, clusters = plot.get_ranges()
                 ranges = []
                 for cluster in clusters:
-                    ranges.append((cluster.spikesX[0], cluster.spikesX[-1]))
+                    if cluster.is_over_noise_threshold():
+                        ranges.append((cluster.spikesX[0], cluster.spikesX[-1]))
                 plot.set_ranges(ranges)
             i += 1
-
+        '''
         #filterTree = FilterTree.build()
         self.canvas.draw()
         pass
