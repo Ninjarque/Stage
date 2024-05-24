@@ -5,3 +5,6 @@ sudo apt-get install python3-pil python3-pil.imagetk
 
 python3 -m pip install -U pip
 python3 -m pip install -U matplotlib
+
+
+pip install noise
