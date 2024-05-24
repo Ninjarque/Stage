@@ -243,6 +243,19 @@ class PlotCurve:
         self.number_lines += 1
         self.next_line_id += 1
 
+    def clear_lines(self):
+        lines = self.lines.copy()
+        i = 0
+        for idx in lines.keys():
+            #if i % 2 == 1:
+            #    continue
+            _, (_, line) = lines[idx]
+            self.delete_line((idx, line))
+            i += 1
+            
+        self.draw()
+
+
     def delete_line(self, given_line):
         if self.selected_line == given_line:
             self.selected_line = None
@@ -252,9 +265,15 @@ class PlotCurve:
         # Get the index and line from given_line
         id, line = given_line
 
-        line.remove()  # Remove the line from the plot
-        del self.lines[id]  # Remove the line from the dictionary
-        self.number_lines -=1
+        try:
+            line.remove()  # Remove the line from the plot
+        except ValueError:
+            pass #print(f"Line {id} could not be removed because it is not in the plot.")
+        #line.remove()  # Remove the line from the plot
+        
+        if id in self.lines:
+            del self.lines[id]  # Remove the line from the dictionary
+            self.number_lines -=1
 
         # Remove associated ranges
         for _range in list(self.ranges):  # Create a copy of the list to modify it during iteration
@@ -321,77 +340,6 @@ class PlotCurve:
         #print("Closest point distance:", dist_nearest)
         #return closest_point
         return dist_nearest
-
-    def nearest_datax_indexes(self, posx):
-        # Binary search for the nearest index
-        low, high = 0, len(self.datax) - 1
-        best_idx = low
-        while low <= high:
-            mid = (low + high) // 2
-            if self.datax[mid] < posx:
-                low = mid + 1
-            elif self.datax[mid] > posx:
-                high = mid - 1
-            else:
-                best_idx = mid
-                break
-            # Update best_idx if the current mid is closer to the posx
-            if abs(self.datax[mid] - posx) < abs(self.datax[best_idx] - posx):
-                best_idx = mid
-
-        # Return a range around the best index
-        return max(0, best_idx - PLOT_MOUSE_INDEXES_DISTANCE_CHECKS), min(len(self.datax) - 1, best_idx + PLOT_MOUSE_INDEXES_DISTANCE_CHECKS)
-    def nearest_datax_index(self, posx):
-        #dycotomy time
-        max = len(self.datax)
-        a = 0
-        b = max - 1
-        center = int((a + b) / 2)
-        lst_center = -1
-
-        if self.datax[a] > posx:
-            return a
-        if self.datax[b] < posx:
-            return b
-
-        it = 0
-        while center != lst_center:
-            if self.datax[center] > posx:
-                b = center
-            else:
-                a = center
-            lst_center = center
-            center = int((a + b) / 2)
-            it = it + 1
-
-        return center
-    def nearest_cluster_index(self, posx):
-        #dycotomy time
-        max = len(self.spikes_clusters)
-        if not max:
-            print("empty list of clusters...")
-            return 0
-        a = 0
-        b = max - 1
-        center = int((a + b) / 2)
-        lst_center = -1
-        if self.spikes_clusters[a].spikesX[0] > posx:
-            return a
-            
-        if self.spikes_clusters[b].spikesX[0] < posx:
-            return b
-
-        it = 0
-        while center != lst_center:
-            if self.spikes_clusters[center].spikesX[0] > posx:
-                b = center
-            else:
-                a = center
-            lst_center = center
-            center = int((a + b) / 2)
-            it = it + 1
-            
-        return center
     
     def update_line_data(self, line_to_update, posx, posy):
         id, line = line_to_update
@@ -444,6 +392,38 @@ class PlotCurve:
             total_gy.extend(y)
         
         self.set_selection_data(total_gx, total_gy)
+    
+    def get_ranges(self):
+        ri = 0
+        total_gx = []
+        total_gy = []
+        total_clusters = []
+        for r in self.ranges:
+            for r2 in self.ranges[ri+1:]:
+                if r != r2:
+                    r.resolve(r2)
+            ri = ri + 1
+            startC = dichotomy.nearest_index(r.start_pos, self.datax)
+            endC = dichotomy.nearest_index(r.end_pos, self.datax) + 1
+            x = self.datax[startC:endC]
+            y = self.datay[startC:endC]
+            total_gx.extend(x)
+            total_gy.extend(y)
+
+            startCl = dichotomy.nearest_cluster_index(r.start_pos, self.spikes_clusters)
+            endCl = dichotomy.nearest_cluster_index(r.end_pos, self.spikes_clusters) + 1
+
+            total_clusters.extend(self.spikes_clusters[startCl:endCl])
+        return total_gx, total_gy, total_clusters
+    
+    def set_ranges(self, ranges):
+        self.clear_lines()
+        for (l1, l2) in ranges:
+            self.add_line(self.plot, l1, 0)
+            self.add_line(self.plot, l2, 0)
+        
+        self.draw()
+
 
     def apply_color_palette(self):
         for idx in self.lines.keys():

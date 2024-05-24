@@ -11,6 +11,8 @@ DefaultTheme = Theme(
             PALETTE_OBJECT_BAR: { 
                 PALETTE_PROPERTY_PLOT_ENABLED: "steelblue",
                 PALETTE_PROPERTY_PLOT_DISABLED: "skyblue",
+                PALETTE_PROPERTY_LINE_HOVERED: "yellow",
+                PALETTE_PROPERTY_LINE_SELECTED: "lawngreen",
                 },
         }
         ),
@@ -19,6 +21,8 @@ DefaultTheme = Theme(
             PALETTE_OBJECT_BAR: { 
                 PALETTE_PROPERTY_PLOT_ENABLED: "salmon",
                 PALETTE_PROPERTY_PLOT_DISABLED: "lightpink",
+                PALETTE_PROPERTY_LINE_HOVERED: "yellow",
+                PALETTE_PROPERTY_LINE_SELECTED: "magenta",
                 },
         }
         ),
