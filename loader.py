@@ -1,4 +1,5 @@
 import math
+import numpy as np
 
 XY_NOISE_Y_THRESHOLD = 0.0001
 XY_GROUP_START_Y_THRESHOLD = 0.0
@@ -6,7 +7,7 @@ XY_GROUP_LEAVE_Y_THRESHOLD = 0.01
 
 XY_OUT_OF_GROUP_X_OFFSET = 0.007
 
-DPT_NOISE_Y_THRESHOLD = 0.035 #0.03
+DPT_NOISE_Y_THRESHOLD = 0.035 #0.035 #0.03
 DPT_GROUP_START_Y_THRESHOLD = 0.07
 DPT_GROUP_LEAVE_Y_THRESHOLD = 0.04
 
@@ -70,6 +71,13 @@ class SpikeCluster:
         self.spikesX = spikesX
         self.spikesY = spikesY
         self.bars = bars
+
+    def is_over_noise_threshold(self, threshold=DPT_NOISE_Y_THRESHOLD):
+        max_ratio = 0.7
+        mean_ratio = 0.3
+        m = (np.max(self.spikesY) * max_ratio + np.mean(self.spikesY) * mean_ratio) / (max_ratio + mean_ratio)
+        return m > threshold
+
 
 class SpikeTree:
     less = None
