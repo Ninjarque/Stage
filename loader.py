@@ -1,7 +1,7 @@
 import math
 
 XY_NOISE_Y_THRESHOLD = 0.0001
-XY_GROUP_START_Y_THRESHOLD = 0.01
+XY_GROUP_START_Y_THRESHOLD = 0.0
 XY_GROUP_LEAVE_Y_THRESHOLD = 0.01
 
 XY_OUT_OF_GROUP_X_OFFSET = 0.007
@@ -385,6 +385,12 @@ def parse_XY(filename):
             maximaTY = y
 
         if ty + avg_prediction * AVERAGE_PREDICTION_GROUP_SMOOTHING_PERCENTAGE >= 1 + XY_GROUP_START_Y_THRESHOLD:
+            if not grouping:
+                spikesData.append(SpikeCluster(groupStart, outOfGroupSince - groupStart, group_x, group_y, group_maxima_i))
+                groups += 1
+                group_x = []
+                group_y = []
+                group_maxima_i = []
             grouping = True
             groupStart = real_count
             outOfGroupFor = 0
