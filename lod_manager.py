@@ -2,7 +2,9 @@ from math import *
 
 import dichotomy
 
-LOD_RECOMPUTE_RATIO_THRESHOLD = 0.1
+LOD_CURVE_RECOMPUTE_RATIO_THRESHOLD = 0.5
+LOD_BAR_RECOMPUTE_RATIO_THRESHOLD = 0.7
+
 
 class LODCurveManager:
     def __init__(self, ax, data_len, max_displayed_data):
@@ -13,23 +15,33 @@ class LODCurveManager:
         
         self.x_min = -1
         self.x_max = -1
+        self.x_margins = 0
 
         self.update()
+
+    def dist_ratio(self, new_x_min, new_x_max):
+        rx = new_x_max - new_x_min
+        dx = abs(self.x_min - new_x_min) + abs(self.x_max - new_x_max)
+        return dx / rx
 
     def update(self):
         # Get current x-axis limits
         x_min, x_max = self.ax.get_xlim()
         changed = False
-        if x_min != self.x_min or x_max != self.x_max:
+        dr = self.dist_ratio(x_min, x_max)
+        #if x_min != self.x_min or x_max != self.x_max:
+        if dr > LOD_CURVE_RECOMPUTE_RATIO_THRESHOLD:
             changed = True
-        self.x_min = x_min
-        self.x_max = x_max
+            self.x_min = x_min
+            self.x_max = x_max
+            self.x_margins = (x_max - x_min) / 2 * LOD_CURVE_RECOMPUTE_RATIO_THRESHOLD
+            #print("Recomputing LOD, ratio of:", dr)
 
         return changed
 
     def get_compressed_data(self, datax, datay):
-        imin = dichotomy.nearest_index(self.x_min, datax)
-        imax = dichotomy.nearest_index(self.x_max, datax)
+        imin = dichotomy.nearest_index(self.x_min - self.x_margins / 2, datax)
+        imax = dichotomy.nearest_index(self.x_max + self.x_margins / 2, datax)
 
         datax = datax[imin:imax]
         datay = datay[imin:imax]
@@ -50,23 +62,33 @@ class LODBarManager:
         
         self.x_min = -1
         self.x_max = -1
+        self.x_margins = 0
 
         self.update()
+
+    def dist_ratio(self, new_x_min, new_x_max):
+        rx = new_x_max - new_x_min
+        dx = abs(self.x_min - new_x_min) + abs(self.x_max - new_x_max)
+        return dx / rx
 
     def update(self):
         # Get current x-axis limits
         x_min, x_max = self.ax.get_xlim()
         changed = False
-        if x_min != self.x_min or x_max != self.x_max:
+        dr = self.dist_ratio(x_min, x_max)
+        #if x_min != self.x_min or x_max != self.x_max:
+        if dr > LOD_BAR_RECOMPUTE_RATIO_THRESHOLD:
             changed = True
-        self.x_min = x_min
-        self.x_max = x_max
+            self.x_min = x_min
+            self.x_max = x_max
+            self.x_margins = (x_max - x_min) / 2 * LOD_BAR_RECOMPUTE_RATIO_THRESHOLD
+            print("Recomputing bar LOD, ratio of:", dr)
 
         return changed
 
     def get_compressed_data(self, xdata, *data_lists):
-        imin = dichotomy.nearest_index(self.x_min, xdata)
-        imax = dichotomy.nearest_index(self.x_max, xdata) + 1
+        imin = dichotomy.nearest_index(self.x_min - self.x_margins, xdata)
+        imax = dichotomy.nearest_index(self.x_max + self.x_margins, xdata) + 1
         imax = min(imax, len(xdata) - 1)
         
         xdata = xdata[imin:imax]
