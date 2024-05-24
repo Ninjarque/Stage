@@ -81,35 +81,49 @@ class CanvasSpikes:
 
     def update_mouse(self, axes, posx, posy, moved_too_much, click_pressed, click_released):
         if axes != self.ax:
-            return CODE_NONE
+            axes = None
+            # return CODE_NONE
 
         if not self.enabled:
+            needs_redraw = False
             if self.selected_lines != []:
-                for line in self.selected_lines:
-                    line.set_color("black")
+                needs_redraw = True
                 self.selected_lines = []
             if self.hovered_lines != []:
-                for line in self.hovered_lines:
-                    line.set_color("black")
+                needs_redraw = True
                 self.hovered_lines = []
+            if needs_redraw:
+                self.draw()
             return CODE_NONE
 
         rcode = CODE_NONE
 
-        if not self.selected_lines and axes:
-            closest_lines = self.get_closest_lines(posx, posy)
-            if closest_lines:
-                if self.hovered_lines:
-                    for line in self.hovered_lines:
-                        line.set_color("black")
-                if self.hovered_lines != closest_lines:
-                    rcode = CODE_HOVERED_LINE
-                self.hovered_lines = closest_lines
-                if self.hovered_lines:
-                    rcode = CODE_HOVERED_LINE
-                    for line in self.hovered_lines:
-                        line.set_color("yellow")
+        if not axes:
+            if self.hovered_lines:
+                self.hovered_lines = []
                 self.draw()
+        if axes:
+            closest_lines = self.get_closest_lines(posx, posy)
+            needs_redraw = False
+            if self.hovered_lines:
+                needs_redraw = True
+            if self.hovered_lines != closest_lines:
+                rcode = CODE_HOVERED_LINE
+            self.hovered_lines = closest_lines
+            if self.hovered_lines:
+                rcode = CODE_HOVERED_LINE
+                needs_redraw = True
+            if needs_redraw:
+                self.draw()
+
+            if self.hovered_lines and click_released and not moved_too_much:
+                self.selected_lines = self.hovered_lines
+                for line in self.selected_lines:
+                    x = line.get_xdata()[0]
+                    spike = dichotomy.nearest_index(x, self.x_data)
+                    print("The closest spike to current selection is:", self.spikes_data[spike].id)
+                self.draw()
+                #lines are getting cleared upon move, further testing will be required
 
         return rcode
     
@@ -170,8 +184,23 @@ class CanvasSpikes:
         #self.clear_spikes()
         self.set_color(self.color_palette.get_color(PALETTE_OBJECT_BAR, PALETTE_PROPERTY_PLOT_DISABLED))
 
+    def apply_color_palette(self):
+        for line in self.spikes:
+            if not self.enabled:
+                line.set_color(self.color_palette.get_color(PALETTE_OBJECT_BAR, PALETTE_PROPERTY_PLOT_DISABLED))
+                continue
+            if line in self.selected_lines:
+                line.set_color(self.color_palette.get_color(PALETTE_OBJECT_BAR, PALETTE_PROPERTY_LINE_SELECTED))
+            elif line in self.hovered_lines:
+                line.set_color(self.color_palette.get_color(PALETTE_OBJECT_BAR, PALETTE_PROPERTY_LINE_HOVERED))
+            else:
+                line.set_color(self.color_palette.get_color(PALETTE_OBJECT_BAR, PALETTE_PROPERTY_PLOT_ENABLED))
+
+
+
     def draw(self):
         if self.lod.update():
             dx, self.displayed_data = self.lod.get_compressed_data(self.x_data, self.spikes_data)
             self.update_spikes(dx)
+        self.apply_color_palette()
         pass
