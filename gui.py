@@ -7,12 +7,13 @@ from matplotlib.gridspec import GridSpec
 
 
 '''
-MAINTAIN THOSE IMPORTS UP TO DATE PLS
+MAINTAIN THOSE IMPORTS UP TO DATE
 '''
 import loader
 from PlotCurve import *
 from themes import *
 from CanvasSpikes import *
+from FilterTree import *
 
 
 class Spectre:
@@ -60,6 +61,9 @@ class GUI:
         self.plot_button = Button(master=self.master, command=self.toggle_curves, height=2, width=20, text="Toggle curve selection")
         self.plot_button.pack()
 
+        self.match_button = Button(master=self.master, command=self.match_regions, height=2, width=20, text="Match selected regions")
+        self.match_button.pack()
+
 
         # Menu
         menu = Menu(master)
@@ -96,6 +100,21 @@ class GUI:
             i += 1
         plot_i = (plot_i + 1) % len(self.plots)
         self.select(self.plots[plot_i])
+
+    def match_regions(self):
+        i = 0
+        for plot in self.plots:
+            if plot.enabled:
+                rangex, rangey, clusters = plot.get_ranges()
+                ranges = []
+                for cluster in clusters:
+                    ranges.append((cluster.spikesX[0], cluster.spikesX[-1]))
+                plot.set_ranges(ranges)
+            i += 1
+
+        #filterTree = FilterTree.build()
+        self.canvas.draw()
+        pass
 
     def select(self, plot):
         for p in self.plots:
