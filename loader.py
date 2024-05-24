@@ -1,6 +1,11 @@
 import math
 
 XY_NOISE_Y_THRESHOLD = 0.0001
+XY_GROUP_START_Y_THRESHOLD = 0.01
+XY_GROUP_LEAVE_Y_THRESHOLD = 0.01
+
+XY_OUT_OF_GROUP_X_OFFSET = 0.009
+
 DPT_NOISE_Y_THRESHOLD = 0.035 #0.03
 DPT_GROUP_START_Y_THRESHOLD = 0.07
 DPT_GROUP_LEAVE_Y_THRESHOLD = 0.04
@@ -253,6 +258,7 @@ def parse_T(filename):
     file1.close()
     return bars
     
+"""
 def parse_XY(filename):
     if not filename:
         print("Empty path, proceeding with default one")
@@ -301,6 +307,125 @@ def parse_XY(filename):
         wasInGroup = inGroup
 
     file1.close()
+    return spikesData
+"""
+def parse_XY(filename):
+    if not filename:
+        print("Empty path, proceeding with default one")
+        filename = "../Exemple_1/simul.xy"
+    filename = filename.strip("\" ")
+    file1 = open(filename, 'r')
+    lines = file1.readlines()
+
+    y_total = 0.0
+    count = 0
+    real_count = 0
+
+    grouping = False
+    groupStart = 0
+    outOfGroupFor = 0
+    outOfGroupSince = -1
+
+    final_x = []
+    final_y = []
+
+    group_x = []
+    group_y = []
+    group_maxima_i = []
+
+    lstX = 0
+    lstY = 0
+
+    avg_y = 0.0
+    lst_avg_y = 0.0
+    avg_derivative = 0.0
+
+    spikesData = []
+
+    groups = 0
+
+    avg_y_manager = AverageManager(SMOOTH_AVERAGE_MAX_CONTEXT_SIZE)
+    local_avg_y_manager = AverageManager(int(SMOOTH_AVERAGE_MAX_CONTEXT_SIZE * AVERAGE_PREDICTION_CONTEXT_SIZE_PERCENTAGE))
+
+    lstTY = 0
+    startingLocalMaxima = False
+
+    print("starting 'parse_XY' process...")
+
+    for line in lines:
+        line = line.strip()
+        if not line:
+            print("empty line...")
+            continue
+        values = line.split()
+
+        x = float(values[0])
+        y = float(values[1])
+        real_y = y
+
+        y_total += y
+
+        avg_y = avg_y_manager.compute(y)
+        local_avg_y = local_avg_y_manager.compute(y)
+
+        avg_derivative = (local_avg_y - lst_avg_y) / (x - lstX)
+        avg_prediction = avg_derivative * SMOOTH_AVERAGE_MAX_CONTEXT_SIZE * AVERAGE_PREDICTION_CONTEXT_SIZE_PERCENTAGE + local_avg_y
+
+        ty = 0.0
+        if avg_y != 0.0:
+            ty = local_avg_y / abs(avg_y)
+        if ty <= 0.0:
+            ty = 0.0
+
+        maximaTY = 0
+        if lstTY < ty and avg_derivative > 0.02:
+            startingLocalMaxima = True
+        if startingLocalMaxima and lstTY >= ty and avg_derivative < -0.02:
+            startingLocalMaxima = False
+            maximaTY = y
+
+        if ty + avg_prediction * AVERAGE_PREDICTION_GROUP_SMOOTHING_PERCENTAGE >= 1 + XY_GROUP_START_Y_THRESHOLD:
+            grouping = True
+            groupStart = real_count
+            outOfGroupFor = 0
+            outOfGroupSince = -1
+
+        if ty < 1 + XY_NOISE_Y_THRESHOLD or (grouping and ty < 1 + XY_GROUP_LEAVE_Y_THRESHOLD + avg_prediction * AVERAGE_PREDICTION_GROUP_SMOOTHING_PERCENTAGE):
+            if grouping and outOfGroupSince == -1:
+                outOfGroupSince = real_count
+            if grouping and outOfGroupFor < XY_OUT_OF_GROUP_X_OFFSET:
+                outOfGroupFor += x - lstX
+            elif grouping and outOfGroupFor >= XY_OUT_OF_GROUP_X_OFFSET:
+                grouping = False
+                spikesData.append(SpikeCluster(groupStart, outOfGroupSince - groupStart, group_x, group_y, group_maxima_i))
+                groups += 1
+                group_x = []
+                group_y = []
+                group_maxima_i = []
+            else:
+                ty = 0.0
+                y = 0.0
+
+        if maximaTY != 0:
+            group_maxima_i.append(Bar(real_count - groupStart - 1, lstX, lstY))
+        
+        lst_avg_y = local_avg_y
+        real_count += 1
+        count += 1
+        group_x.append(x)
+        group_y.append(real_y)
+
+        lstX = x
+        lstY = y
+        lstTY = ty
+    
+    if len(group_x) > 0:
+        spikesData.append(SpikeCluster(groupStart, outOfGroupSince - groupStart, group_x, group_y, group_maxima_i))
+
+    file1.close()
+
+    final_avg_y = y_total / count
+
     return spikesData
 
 def parse_DPT(filename):
@@ -403,21 +528,8 @@ def parse_DPT(filename):
                 #out of group for too long, grouping what has been found
                 grouping = False
 
-                #[final_x.append(gx) for gx in group_x[:outOfGroupSince]]
-                #[final_y.append(gy) for gy in group_y[:outOfGroupSince]]
-
                 spikesData.append(SpikeCluster(groupStart, outOfGroupSince - groupStart, group_x, group_y, group_maxima_i))
                 
-                #print("made group of {}".format(real_count - outOfGroupSince))
-                #if (groups % 3) == 1:
-                #    [final_x.append(gx) for gx in group_x[:outOfGroupSince]]
-                #    [final_y.append(gy) for gy in group_y[:outOfGroupSince]]
-                #else:
-                #    [final_x.append(gx) for gx in group_x[:outOfGroupSince]]
-                #    [final_y.append(0.0) for gy in group_y[:outOfGroupSince]]
-                #print("with group y = {}".format(group_y))
-
-
                 groups += 1
 
                 group_x = []
