@@ -82,7 +82,7 @@ class LODBarManager:
             self.x_min = x_min
             self.x_max = x_max
             self.x_margins = (x_max - x_min) / 2 * LOD_BAR_RECOMPUTE_RATIO_THRESHOLD
-            print("Recomputing bar LOD, ratio of:", dr)
+            #print("Recomputing bar LOD, ratio of:", dr)
 
         return changed
 
