@@ -106,8 +106,15 @@ class GUI:
         self.select(self.plots[plot_i])
 
     def test(self):
-        self.plots[1].set_ranges([(1032.110, 1032.125)])
-        self.plots[0].set_ranges([(1032.020, 1032.160)])
+        #large test
+        #self.plots[1].set_ranges([(1032.110, 1032.125)])
+        #self.plots[0].set_ranges([(1032.020, 1032.160)])
+        
+        #second spike small test
+        self.plots[1].set_ranges([(1032.240, 1032.245)])
+        self.plots[0].set_ranges([(1032.265, 1032.280)])
+
+        pass
 
     def match_regions(self):
         if len(self.plots) > 1:
@@ -131,36 +138,35 @@ class GUI:
             if not target_clusters or not current_clusters:
                 print("wut target_clusters/current_clusters?")
                 return
-            candidates = MatchCandidatesGenerator.generate(target_clusters, current_clusters)
+            target_cluster = SpikeCluster.merge(target_clusters)
+            target_cluster, new_start_target, new_end_target = SpikeCluster.truncate(target_cluster, 0.01)
+            candidates = MatchCandidatesGenerator.generate(target_cluster, current_clusters)
+            '''
+            SOMEHOW, THE SELECTION IS WEIRDLY CALCULATED WHEN THERE IS A CERTAIN NUMBER OF RANGES OR THE CURRENT RANGE IS OF A CERTAIN SPAN
+            '''
             if not candidates:
                 print("wut candidate?")
                 return
             #print(candidates)
-            featureExtractor = RandomFeatureExtractor(50, 400)
-            for candidate in candidates.keys():
-                current_chunks_list = candidates[candidate]
-                list_x = []
-                list_y = []
+            featureExtractor = RandomFeatureExtractor(100, 200)
+            list_x = []
+            list_y = []
+            for candidate in candidates:
                 #print("current_chunks_list", current_chunks_list)
-                for current_chunks in current_chunks_list:
-                    cx = [chunk.spikesX for chunk in current_chunks]
-                    cy = [chunk.spikesY for chunk in current_chunks]
-                    rx = []
-                    for x in cx:
-                        rx.extend(x)
-                    ry = []
-                    for y in cy:
-                        ry.extend(y)
-                    print("adding chunk [", rx[0], ",", rx[-1], "]")
-                    list_x.append(rx)
-                    list_y.append(ry)
-                    pass
-                bestMatch = featureExtractor.match(candidate.spikesX, candidate.spikesY, list_x, list_y)
-                lx = list_x[bestMatch]
-                ly = list_y[bestMatch]
-                #print("list_x", list_x)
-                #print("lx", lx)
-                current_plot.set_ranges([(lx[0], lx[-1])])
+                x = [v for v in candidate.spikesX]
+                y = [v for v in candidate.spikesY]
+                print("adding chunk [", x[0], ",", x[-1], "], size:", len(x))
+                list_x.append(x)
+                list_y.append(y)
+                pass
+            target_start, target_end, bestMatch, x_start_offset, x_end_offset = featureExtractor.match(target_cluster.spikesX, target_cluster.spikesY, list_x, list_y)
+            lx = list_x[bestMatch]
+            ly = list_y[bestMatch]
+            #print("list_x", list_x)
+            #print("lx", lx)
+            target_plot.set_ranges([(target_cluster.spikesX[target_start - new_start_target], target_cluster.spikesX[target_end - new_start_target])])
+            print("selecting range in current plot of", x_start_offset, ":", x_end_offset, "over the chunk of size", len(lx))
+            current_plot.set_ranges([(lx[x_start_offset], lx[x_end_offset])])
         '''
         i = 0
         for plot in self.plots:
