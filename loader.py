@@ -77,7 +77,48 @@ class SpikeCluster:
         mean_ratio = mean_or_max_ratio
         m = (np.max(self.spikesY) * max_ratio + np.mean(self.spikesY) * mean_ratio) / (max_ratio + mean_ratio)
         return m > threshold_ratio * DPT_NOISE_Y_THRESHOLD
+    
+    def merge(clusters):
+        startI = 0
+        countI = 0
 
+        spikesX = []
+        spikesY = []
+        
+        bars = []
+        for c in clusters:
+            if startI == -1 or startI > c.startI:
+                startI = c.startI
+            countI += c.countI
+            spikesX = spikesX + c.spikesX
+            spikesY = spikesY + c.spikesY
+            bars = bars + c.bars
+        return SpikeCluster(startI, countI, spikesX, spikesY, bars)
+    
+    def truncate(cluster, ratio):
+        startI = 0
+        curr_y = cluster.spikesY[startI]
+        smaller_truncate_threshold = max(cluster.spikesY) * ratio
+        while startI < len(cluster.spikesY) and curr_y < smaller_truncate_threshold:
+            curr_y = cluster.spikesY[startI]
+            startI += 1
+        endI = len(cluster.spikesY) - 1
+        curr_y = cluster.spikesY[endI]
+        while endI >= 0 and curr_y < smaller_truncate_threshold:
+            curr_y = cluster.spikesY[endI]
+            endI -= 1
+
+        #if startI != 0 or endI != len(self.spikesY):
+        #    print("actually doing something? [", startI, ",", endI, "], originaly [", 0, ",", len(self.spikesY), "]")
+
+        print("truncated from [", 0, ",", len(cluster.spikesY) - 1, "] to [", startI, ",", endI, "], with threshold of ", smaller_truncate_threshold, "/", max(cluster.spikesY))
+
+        spikesX = cluster.spikesX[startI:endI]
+        spikesY = cluster.spikesY[startI:endI]
+        countI = endI - startI
+        #the cluster.bar is a problem, as we need to know where are the bars actually to remove them from truncated clusters
+        return SpikeCluster(startI, countI, spikesX, spikesY, cluster.bars), startI, endI
+            
 
 class SpikeTree:
     less = None
