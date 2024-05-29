@@ -7,6 +7,7 @@ from matplotlib.gridspec import GridSpec
 
 import MatchCandidatesGenerator
 from FeatureExtractor import *
+from Matcher import *
 
 '''
 MAINTAIN THOSE IMPORTS UP TO DATE
@@ -140,33 +141,15 @@ class GUI:
                 return
             target_cluster = SpikeCluster.merge(target_clusters)
             target_cluster, new_start_target, new_end_target = SpikeCluster.truncate(target_cluster, 0.01)
-            candidates = MatchCandidatesGenerator.generate(target_cluster, current_clusters)
-            '''
-            SOMEHOW, THE SELECTION IS WEIRDLY CALCULATED WHEN THERE IS A CERTAIN NUMBER OF RANGES OR THE CURRENT RANGE IS OF A CERTAIN SPAN
-            '''
-            if not candidates:
-                print("wut candidate?")
-                return
-            #print(candidates)
-            featureExtractor = RandomFeatureExtractor(100, 200)
-            list_x = []
-            list_y = []
-            for candidate in candidates:
-                #print("current_chunks_list", current_chunks_list)
-                x = [v for v in candidate.spikesX]
-                y = [v for v in candidate.spikesY]
-                print("adding chunk [", x[0], ",", x[-1], "], size:", len(x))
-                list_x.append(x)
-                list_y.append(y)
-                pass
-            target_start, target_end, bestMatch, x_start_offset, x_end_offset = featureExtractor.match(target_cluster.spikesX, target_cluster.spikesY, list_x, list_y)
-            lx = list_x[bestMatch]
-            ly = list_y[bestMatch]
-            #print("list_x", list_x)
-            #print("lx", lx)
+
+            matchingStep1 = MatchingStep(RandomFeatureExtractor(100, 200), 0.5, 0.75, 0.75)
+            matchingStep2 = MatchingStep(DistanceFeatureExtractor(), 1.0, 1.0, 1.0)
+            matcher = Matcher(matchingStep1)#, matchingStep2)
+            target_start, target_end, x_start, x_end = matcher.match(target_cluster, current_clusters)
+            
             target_plot.set_ranges([(target_cluster.spikesX[target_start - new_start_target], target_cluster.spikesX[target_end - new_start_target])])
-            print("selecting range in current plot of", x_start_offset, ":", x_end_offset, "over the chunk of size", len(lx))
-            current_plot.set_ranges([(lx[x_start_offset], lx[x_end_offset])])
+            print("selecting range in current plot of", x_start, ":", x_end)
+            current_plot.set_ranges([(x_start, x_end)])
         '''
         i = 0
         for plot in self.plots:

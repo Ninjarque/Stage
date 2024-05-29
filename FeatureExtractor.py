@@ -3,6 +3,8 @@ from noise import pnoise1
 import random
 import matplotlib.pyplot as plt
 
+from abc import ABC, abstractmethod
+
 import dichotomy
 
 from FeatureFilter import *
@@ -93,54 +95,14 @@ def generate_perlin_noise_1d(size, scale=100, seed=0, octaves=8, persistence=0.5
 
     return noise / max_amplitude
 
-class RandomFeatureExtractor:
-    def __init__(self, filters_x_length, features_count = 20, seed=None):
-        random.seed(seed)
-        self.features_count = features_count
-        self.filters_x_length = filters_x_length
-        self.feature_filters = []
-        self.filters = []
-        for i in range(self.features_count):
-            values = generate_perlin_noise_1d(self.filters_x_length, scale=filters_x_length/4.0, seed=seed)
-            #if i == 0:
-            #    print(values)
-            
-            #plt.suptitle('Filter {}'.format(i))
-            #plt.plot([i for i in range(self.filters_x_length)], values, 'b-')
-            #plt.show()
-            
-            self.filters.append(FeatureFilter(values))
-
+class FeatureExtractor(ABC):
+    @abstractmethod
     def extract_features(self, curvex, curvey):
-        features = []
-        for filter in self.filters:
-            f = filter.apply(curvex, curvey)
-            features.append(f)
-
-        #features = features / np.linalg.norm(features)
-
-        return features
+        pass
     
+    @abstractmethod
     def distance(self, target_curvex, target_curvey, current_curvex, current_curvey, target_features, current_features):
-        #ratio of feature vector
-        r_f = 5.0
-        #ratio of curve's y diff
-        r_cy = 1.0
-
-        target_curvex = np.array(target_curvex) - target_curvex[0]
-        current_curvex = np.array(current_curvex) - current_curvex[0]
-        target_curvey = np.interp(current_curvex, target_curvex, target_curvey)
-        
-        dt = np.array(target_features) - np.array(current_features)
-        d_features = np.linalg.norm(dt)
-
-        d_curvey = np.sum(np.abs(np.array(target_curvey) - np.array(current_curvey)))
-        
-        d = (d_features * r_f + d_curvey * r_cy) / (r_f + r_cy)
-
-        #print("dist feature:", d_features, "dist curve's y:", d_curvey, "total dist:", d)
-
-        return d
+        pass
 
     def sliding_distance(self, target_curvex, target_curvey, current_curvex, current_curvey, sliding_step):
         # Determine which curve is smaller
@@ -178,21 +140,6 @@ class RandomFeatureExtractor:
                 min_dist = dist
                 min_index_start = start
                 min_index_end = start + window_size
-
-                #tstart = sub_curvex[0]
-                #tend = sub_curvex[-1]
-                #start_found = dichotomy.nearest_index(tstart, larger_curvex)
-                #end_found = dichotomy.nearest_index(tend, larger_curvex)
-                #print("Found better dist, from", min_dist, "to", dist, ", at pos [", start_found, ":", end_found, "], (given target poses of", tstart, ",", tend, ")")
-                #min_index_start = start_found
-                #min_index_end = end_found
-                
-                #plt.suptitle('Best match so far with dist:{}, ranging from [{}:{}]/{}'.format(dist, start, start + window_size, len(larger_curvex)))
-                #sbx = np.array(sub_curvex) - min(sub_curvex)
-                #smx = np.array(smaller_curvex) - min(smaller_curvex)
-                #plt.plot(sbx, sub_curvey, 'r-')
-                #plt.plot(smx, smaller_curvey, 'b-')
-                #plt.show()
                 
 
         if len(current_curvex) < len(target_curvex):
@@ -224,8 +171,10 @@ class RandomFeatureExtractor:
 
         return curvex, curvey, startI, endI
 
-    def match(self, target_curvex, target_curvey, list_curvex, list_curvey):
-        sliding_step = FEATURE_EXTRACTOR_SLIDING_STEP
+    def match(self, target_curvex, target_curvey, list_curvex, list_curvey, sliding_step_precision = 1.0):
+        if sliding_step_precision <= 0.01:
+            sliding_step_precision = 0.01
+        sliding_step = int(max(FEATURE_EXTRACTOR_SLIDING_STEP / sliding_step_precision, 1))
         truncate_smaller = FEATURE_EXTRACTOR_TRUNCATE_RATIO
         best_index = -1
         best_dist = -1
@@ -257,3 +206,58 @@ class RandomFeatureExtractor:
                     best_index_x_end_offset = end# - coffset
 
         return target_start, target_end, best_index, best_index_x_start_offset, best_index_x_end_offset
+
+
+class RandomFeatureExtractor(FeatureExtractor):
+    def __init__(self, filters_x_length, features_count = 20, seed=None):
+        random.seed(seed)
+        self.features_count = features_count
+        self.filters_x_length = filters_x_length
+        self.feature_filters = []
+        self.filters = []
+        for i in range(self.features_count):
+            values = generate_perlin_noise_1d(self.filters_x_length, scale=filters_x_length/4.0, seed=seed)
+            #if i == 0:
+            #    print(values)
+            
+            #plt.suptitle('Filter {}'.format(i))
+            #plt.plot([i for i in range(self.filters_x_length)], values, 'b-')
+            #plt.show()
+            
+            self.filters.append(FeatureFilter(values))
+
+    def extract_features(self, curvex, curvey):
+        features = []
+        for filter in self.filters:
+            f = filter.apply(curvex, curvey)
+            features.append(f)
+
+        features = features / np.linalg.norm(features)
+
+        return features
+    
+    def distance(self, target_curvex, target_curvey, current_curvex, current_curvey, target_features, current_features):
+        target_curvex = np.array(target_curvex) - target_curvex[0]
+        current_curvex = np.array(current_curvex) - current_curvex[0]
+        
+        dt = np.array(target_features) - np.array(current_features)
+        d_features = np.linalg.norm(dt)
+
+        #print("dist feature:", d_features, "dist curve's y:", d_curvey, "total dist:", d)
+
+        return d_features
+
+class DistanceFeatureExtractor(FeatureExtractor):
+    def __init__(self):
+        pass
+
+    def extract_features(self, curvex, curvey):
+        return []
+    
+    def distance(self, target_curvex, target_curvey, current_curvex, current_curvey, target_features, current_features):
+        target_curvey = np.interp(current_curvex, target_curvex, target_curvey)
+        d_curvey = np.sum(np.abs(np.array(target_curvey) - np.array(current_curvey)))
+        
+        #print("dist feature:", d_features, "dist curve's y:", d_curvey, "total dist:", d)
+
+        return d_curvey
