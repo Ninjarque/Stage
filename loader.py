@@ -1,6 +1,11 @@
 import math
 import numpy as np
 
+import dichotomy
+from SpikeCluster import *
+from Bar import *
+from AverageManager import *
+
 XY_NOISE_Y_THRESHOLD = 0.0001
 XY_GROUP_START_Y_THRESHOLD = 0.0
 XY_GROUP_LEAVE_Y_THRESHOLD = 0.01
@@ -19,106 +24,7 @@ AVERAGE_PREDICTION_CONTEXT_SIZE_PERCENTAGE = 0.01 #0.001
 AVERAGE_PREDICTION_GROUP_SMOOTHING_PERCENTAGE = 0.001 #0.001
 
 
-SPIKE_TREE_MAX_CLUSTERS_COUNT = 10
-
-
-class AverageManager:
-    count = 0
-    maxCount = 0
-    avg = 0
-    lstAvg = 0
-    outValues = [0]
-    currentV = 0
-
-    def __init__(self, contextSize):
-        self.maxCount = contextSize
-        self.outValues = [0] * self.maxCount
-
-    def compute(self, newValue):
-        self.currentV = (self.currentV + 1) % self.maxCount
-        outV = (self.currentV - self.maxCount + 1) % self.maxCount
-        self.count = min(self.count + 1, self.maxCount)
-        self.avg = self.lstAvg + 1.0/self.count * (newValue - self.outValues[outV])
-        self.lstAvg = self.avg
-        self.outValues[outV] = newValue
-        return self.avg
-
-class Bar:
-    i = 0
-    x = 0
-    y = 1.0
-
-    id = []
-
-    def __init__(self, i, x, y = 1.0, id = []):
-        self.i = i
-        self.x = x
-        self.y = y
-        self.id = id
-
-class SpikeCluster:
-    startI = 0
-    countI = 0
-
-    spikesX = []
-    spikesY = []
-    
-    bars = []
-
-    def __init__(self, startI, countI, spikesX, spikesY, bars = []):
-        self.startI = startI
-        self.countI = countI
-        self.spikesX = spikesX
-        self.spikesY = spikesY
-        self.bars = bars
-
-    def is_over_noise_threshold(self, threshold_ratio=1.0, mean_or_max_ratio = 0.5):
-        max_ratio = 1.0 - mean_or_max_ratio
-        mean_ratio = mean_or_max_ratio
-        m = (np.max(self.spikesY) * max_ratio + np.mean(self.spikesY) * mean_ratio) / (max_ratio + mean_ratio)
-        return m > threshold_ratio * DPT_NOISE_Y_THRESHOLD
-    
-    def merge(clusters):
-        startI = 0
-        countI = 0
-
-        spikesX = []
-        spikesY = []
-        
-        bars = []
-        for c in clusters:
-            if startI == -1 or startI > c.startI:
-                startI = c.startI
-            countI += c.countI
-            spikesX = spikesX + c.spikesX
-            spikesY = spikesY + c.spikesY
-            bars = bars + c.bars
-        return SpikeCluster(startI, countI, spikesX, spikesY, bars)
-    
-    def truncate(cluster, ratio):
-        startI = 0
-        curr_y = cluster.spikesY[startI]
-        smaller_truncate_threshold = max(cluster.spikesY) * ratio
-        while startI < len(cluster.spikesY) and curr_y < smaller_truncate_threshold:
-            curr_y = cluster.spikesY[startI]
-            startI += 1
-        endI = len(cluster.spikesY) - 1
-        curr_y = cluster.spikesY[endI]
-        while endI >= 0 and curr_y < smaller_truncate_threshold:
-            curr_y = cluster.spikesY[endI]
-            endI -= 1
-
-        #if startI != 0 or endI != len(self.spikesY):
-        #    print("actually doing something? [", startI, ",", endI, "], originaly [", 0, ",", len(self.spikesY), "]")
-
-        print("truncated from [", 0, ",", len(cluster.spikesY) - 1, "] to [", startI, ",", endI, "], with threshold of ", smaller_truncate_threshold, "/", max(cluster.spikesY))
-
-        spikesX = cluster.spikesX[startI:endI]
-        spikesY = cluster.spikesY[startI:endI]
-        countI = endI - startI
-        #the cluster.bar is a problem, as we need to know where are the bars actually to remove them from truncated clusters
-        return SpikeCluster(startI, countI, spikesX, spikesY, cluster.bars), startI, endI
-            
+SPIKE_TREE_MAX_CLUSTERS_COUNT = 10        
 
 class SpikeTree:
     less = None
