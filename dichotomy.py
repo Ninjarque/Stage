@@ -1,3 +1,29 @@
+def nearest_function(get_data, data_length, is_lower_function):
+    max = len(data_length)
+    if max == 0:
+        return 0
+    a = 0
+    b = max - 1
+    center = int((a + b) / 2)
+    lst_center = -1
+
+    if is_lower_function(get_data(a)):
+        return a
+    if not is_lower_function(get_data(b)):
+        return b
+
+    it = 0
+    while center != lst_center:
+        if not is_lower_function(get_data(center)):
+            b = center
+        else:
+            a = center
+        lst_center = center
+        center = int((a + b) / 2)
+        it = it + 1
+
+    return center
+
 def nearest_index(target, data):
     max = len(data)
     if max == 0:

@@ -1,4 +1,4 @@
-from loader import SpikeCluster
+from SpikeCluster import *
 
 CANDIDATE_THRESHOLD_RATIO = 0.9
 CANDIDATE_MEAN_OR_MAX_RATIO = 0.2 #0.0

@@ -171,41 +171,25 @@ class FeatureExtractor(ABC):
 
         return curvex, curvey, startI, endI
 
-    def match(self, target_curvex, target_curvey, list_curvex, list_curvey, sliding_step_precision = 1.0):
+    def match(self, target_curvex, target_curvey, current_curvex, current_curvey, sliding_step_precision = 1.0):
         if sliding_step_precision <= 0.01:
             sliding_step_precision = 0.01
         sliding_step = int(max(FEATURE_EXTRACTOR_SLIDING_STEP / sliding_step_precision, 1))
         truncate_smaller = FEATURE_EXTRACTOR_TRUNCATE_RATIO
-        best_index = -1
-        best_dist = -1
-        best_index_x_start_offset = 0
-        best_index_x_end_offset = -1
 
         target_maxy = max(target_curvey)
         target_curvey = [y / target_maxy for y in target_curvey]
 
         target_curvex, target_curvey, target_start, target_end = self.truncate_curve(target_curvex, target_curvey, truncate_smaller)
 
-        current_maxy = max([max(c) for c in list_curvey])
+        current_maxy = max(current_curvey)
+        current_curvey = [y / current_maxy for y in current_curvey]
 
-        for i in range(len(list_curvex)):
-            cx = list_curvex[i]
-            cy = list_curvey[i]
-            cy = [y / current_maxy for y in cy]
-
-            cx, cy, coffset, cend = self.truncate_curve(cx, cy, truncate_smaller)
-            dist, start, end = self.sliding_distance(target_curvex, target_curvey, cx, cy, sliding_step)
-            print("dist", dist, "from", start, "to", end, "for chunk i:", i, " [", cx[0], ",", cx[-1], "]")
-            
-            if best_index == -1 or dist < best_dist:
-                best_index = i
-                best_dist = dist
-                if end != -1:
-                    print("curvey offset:", coffset)
-                    best_index_x_start_offset = start# - coffset
-                    best_index_x_end_offset = end# - coffset
-
-        return target_start, target_end, best_index, best_index_x_start_offset, best_index_x_end_offset
+        cx, cy, coffset, cend = self.truncate_curve(current_curvex, current_curvey, truncate_smaller)
+        dist, start, end = self.sliding_distance(target_curvex, target_curvey, cx, cy, sliding_step)
+        print("dist", dist, "from", start, "to", end, " [", cx[0], ",", cx[-1], "]")
+        
+        return target_start, target_end, start, end
 
 
 class RandomFeatureExtractor(FeatureExtractor):
@@ -248,16 +232,33 @@ class RandomFeatureExtractor(FeatureExtractor):
         return d_features
 
 class DistanceFeatureExtractor(FeatureExtractor):
-    def __init__(self):
-        pass
+    def __init__(self, scales = [0.75, 1.0, 1.25, 1.5]):
+        self.scales = scales
 
     def extract_features(self, curvex, curvey):
         return []
     
     def distance(self, target_curvex, target_curvey, current_curvex, current_curvey, target_features, current_features):
-        target_curvey = np.interp(current_curvex, target_curvex, target_curvey)
-        d_curvey = np.sum(np.abs(np.array(target_curvey) - np.array(current_curvey)))
-        
-        #print("dist feature:", d_features, "dist curve's y:", d_curvey, "total dist:", d)
+        min_dist = -1
+        for scale in self.scales:
+            current_x = [i - len(current_curvex) / 2 for i in range(len(current_curvex))]
+            target_x = [(i - len(target_curvey) / 2) * scale for i in range(len(target_curvey))]
+            #print("target_x", len(target_x))
+            #print("target_curvey", len(target_curvey))
+            new_target_curvey = np.interp(current_x, target_x, target_curvey)
+            dt = np.array(new_target_curvey) - np.array(current_curvey)
+            d_curvey = np.sum(np.abs(dt))
+            
 
-        return d_curvey
+            if min_dist == -1 or d_curvey < min_dist:
+                min_dist = d_curvey
+                #print("target_x indexes:", target_x)
+                #print("current_x indexes:", current_x)
+                #print("target_curvey length:", len(target_curvey))
+                #plt.suptitle('Distance feature extractor scale x{}'.format(scale))
+                #plt.plot(current_x, new_target_curvey, 'b-')
+                #plt.plot(current_x, current_curvey, 'r-')
+                #plt.plot(current_x, dt, 'g-')
+                #plt.show()
+
+        return min_dist

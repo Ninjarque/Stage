@@ -13,6 +13,7 @@ from Matcher import *
 MAINTAIN THOSE IMPORTS UP TO DATE
 '''
 import loader
+from SpikeCluster import *
 from PlotCurve import *
 from themes import *
 from CanvasSpikes import *
@@ -142,12 +143,14 @@ class GUI:
             target_cluster = SpikeCluster.merge(target_clusters)
             target_cluster, new_start_target, new_end_target = SpikeCluster.truncate(target_cluster, 0.01)
 
-            matchingStep1 = MatchingStep(RandomFeatureExtractor(100, 200), 0.5, 0.75, 0.75)
-            matchingStep2 = MatchingStep(DistanceFeatureExtractor(), 1.0, 1.0, 1.0)
-            matcher = Matcher(matchingStep1)#, matchingStep2)
-            target_start, target_end, x_start, x_end = matcher.match(target_cluster, current_clusters)
+            current_clusters = SpikeCluster.merge(current_clusters)
+
+            matchingStep1 = MatchingStep(RandomFeatureExtractor(100, 200), 0.5, 1.0, 0.5)
+            matchingStep2 = MatchingStep(DistanceFeatureExtractor([0.5, 0.75, 1.0, 1.5, 1.75]), 0.5, 1.0, 0.5)
+            matcher = Matcher(matchingStep2)#matchingStep1)#, matchingStep2)
+            target_start, target_end, x_start, x_end = matcher.match(target_cluster, current_clusters, 3)
             
-            target_plot.set_ranges([(target_cluster.spikesX[target_start - new_start_target], target_cluster.spikesX[target_end - new_start_target])])
+            target_plot.set_ranges([(target_cluster.spikesX[target_start], target_cluster.spikesX[target_end])])
             print("selecting range in current plot of", x_start, ":", x_end)
             current_plot.set_ranges([(x_start, x_end)])
         '''

@@ -1,3 +1,6 @@
+from SpikeCluster import *
+from AverageManager import *
+
 import MatchCandidatesGenerator
 
 class MatchingStep:
@@ -11,22 +14,45 @@ class Matcher:
     def __init__(self, *matchingSteps):
         self.matchingSteps = matchingSteps
 
-    def match(self, target_chunk, current_chunks):
-        candidates = MatchCandidatesGenerator.generate(target_chunk, current_chunks)
-        if not candidates:
-            print("Couldn't find possible matches in current chunks!")
-            return []
-        candidates = [c for c in candidates if c.is_over_noise_threshold()]
-        list_x = []
-        list_y = []
-        for candidate in candidates:
-            #print("current_chunks_list", current_chunks_list)
-            x = [v for v in candidate.spikesX]
-            y = [v for v in candidate.spikesY]
-            print("adding chunk [", x[0], ",", x[-1], "], size:", len(x))
-            list_x.append(x)
-            list_y.append(y)
-            pass
+    def match(self, target_chunk, current_chunk, reccursions = 1):
+        target_start = 0
+        target_end = -1
+        current_start = 0
+        current_end = -1
+
+        real_target_offset = 0
+        real_target_end = 0
+
+        for r in range(reccursions):
+            #as of now, every reccursion doesn't change squat about the previous ones
+            #first we'll need to change the precision over reccursions -> somewhat done, but target_start (and maybe end) error, seems like set to 0, needs to accumulate maybe
+            #then we'll
+            target_start, target_end, x_start, x_end = self.match_chunk(target_chunk, current_chunk)
+            
+            real_target_offset += target_start
+            real_target_start = target_start
+            real_target_end = target_end
+            
+            target_chunk, target_start, target_end = SpikeCluster.truncate_range_index(target_chunk, target_start, target_end)
+            
+            real_target_offset += target_start
+            real_target_start = target_start
+            real_target_end = target_end
+
+            current_chunk, current_start, current_end = SpikeCluster.truncate_range_x(current_chunk, x_start, x_end)
+
+            if r < reccursions - 1:
+                target_chunk, target_start, target_end = SpikeCluster.truncate(target_chunk, 0.5)
+                
+                real_target_offset += target_start
+                real_target_start = target_start
+                real_target_end = target_end
+
+                current_chunk, current_start, current_end = SpikeCluster.truncate(current_chunk, 0.5)
+
+        return real_target_offset + real_target_start, real_target_offset + real_target_end, current_chunk.spikesX[0], current_chunk.spikesX[-1]
+
+    def match_chunk(self, target_chunk, current_chunk):
         target_start, target_end = 0, -1
         x_start_offset, x_end_offset = 0, -1
         x_start, x_end = 0, 0
@@ -38,35 +64,17 @@ class Matcher:
             stepSlindingPrecision = matchingStep.stepSlindingPrecision
             stepChunkPrecision = matchingStep.stepChunkPrecision
             stepRangePrecision = matchingStep.stepRangePrecision
-            target_start, target_end, bestMatch, x_start_offset, x_end_offset = featureExtractor.match(target_chunk.spikesX, target_chunk.spikesY, list_x, list_y, stepSlindingPrecision)
-            #this version of the algorithm could work if only it where to select a bigger range if ensure, we'll see later on about that
-            #list_x = list_x[bestMatch][x_start_offset:x_end_offset]
-            #list_y = list_y[bestMatch][x_start_offset:x_end_offset]
-            #this version will do for now, altough, a little wasteful
+            target_start, target_end, x_start_offset, x_end_offset = featureExtractor.match(target_chunk.spikesX, target_chunk.spikesY, current_chunk.spikesX, current_chunk.spikesY, stepSlindingPrecision)
 
+            m_range = min((target_chunk.spikesX[-1] - target_chunk.spikesX[0]), (current_chunk.spikesX[-1] - current_chunk.spikesX[0]))
+            xvalues = m_range / 2.0 * (1 - stepRangePrecision)
+            x_start = current_chunk.spikesX[0] - xvalues
+            x_end = current_chunk.spikesX[-1] + xvalues
 
-            #WHAT ABOUT COMPUTING THE CHUNK SPAN BASED ON THE RANGE SCALING WITH DICHOTOMY (AGAIN XD)
+            x_start = ((current_chunk.spikesX[x_start_offset]) * stepRangePrecision) + (x_start * (1.0 - stepRangePrecision))
+            x_end = ((current_chunk.spikesX[x_end_offset]) * stepRangePrecision) + (x_end * (1.0 - stepRangePrecision))
 
-            chunks = len(list_x) * (1 - stepChunkPrecision)
-            bestMatchRangeMin = int(max(0, bestMatch - chunks))
-            bestMatchRangeMax = int(min(len(list_x) - 1, bestMatch + chunks) + 1)
-            print("next step ranges", bestMatchRangeMin, ":", bestMatchRangeMax)
-            list_bestMatch_x = list_x[bestMatch]
-            list_bestMatch_y = list_x[bestMatch]
-
-            list_x = list_x[bestMatchRangeMin:bestMatchRangeMax]
-            list_y = list_y[bestMatchRangeMin:bestMatchRangeMax]
-
-
-            print("list size", len(list_x), ", match index", bestMatch)
-
-            xvalues = (list_bestMatch_x[-1] - list_bestMatch_x[0]) / 2.0 * (1 - stepRangePrecision)
-            x_start = list_bestMatch_x[0] - xvalues
-            x_end = list_bestMatch_x[-1] + xvalues
-
-            x_start = ((list_bestMatch_x[x_start_offset]) * stepRangePrecision) + (x_start * (1.0 - stepRangePrecision))
-            x_end = ((list_bestMatch_x[x_end_offset]) * stepRangePrecision) + (x_end * (1.0 - stepRangePrecision))
-
+            current_chunk = SpikeCluster.truncate_range_x(current_chunk, x_start, x_end)
 
             step += 1
 
