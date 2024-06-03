@@ -9,7 +9,8 @@ def write_ASG(filename, bars):
             else:
                 id_str = f"{bar.id[0]} {bar.id[1]}   {bar.id[2]}   {bar.id[3]} {bar.id[4]}   {bar.id[5]}"
                 if len(bar.id) > 5:
-                    id_str = f"{id_str} {bar.id[6:]}"
+                    ids = f"{bar.id[6:]}".strip("[]")
+                    id_str = f"{id_str} {ids}"
                 #id_str = " ".join(bar.id)
                 file.write(f"  {bar.i} {bar.x:.6f} + 0.1000E+01    0.001000 10.0     {id_str}\n")
 
