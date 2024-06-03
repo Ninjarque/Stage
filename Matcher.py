@@ -3,6 +3,8 @@ from AverageManager import *
 
 import MatchCandidatesGenerator
 
+TRUNCATE_PERCENTAGE_PER_ITERATION = 0.2
+
 class MatchingStep:
     def __init__(self, featureExtractor, stepSlidingPrecision, stepChunkPrecision, stepRangePrecision):
         self.featureExtractor = featureExtractor
@@ -42,13 +44,13 @@ class Matcher:
             current_chunk, current_start, current_end = SpikeCluster.truncate_range_x(current_chunk, x_start, x_end)
 
             if r < reccursions - 1:
-                target_chunk, target_start, target_end = SpikeCluster.truncate(target_chunk, 0.5)
+                target_chunk, target_start, target_end = SpikeCluster.truncate(target_chunk, TRUNCATE_PERCENTAGE_PER_ITERATION)
                 
                 real_target_offset += target_start
                 real_target_start = target_start
                 real_target_end = target_end
 
-                current_chunk, current_start, current_end = SpikeCluster.truncate(current_chunk, 0.5)
+                current_chunk, current_start, current_end = SpikeCluster.truncate(current_chunk, TRUNCATE_PERCENTAGE_PER_ITERATION)
 
         return real_target_offset + real_target_start, real_target_offset + real_target_end, current_chunk.spikesX[0], current_chunk.spikesX[-1]
 

@@ -52,6 +52,11 @@ class SpikeCluster:
             bars = bars + c.bars
         return SpikeCluster(startI, countI, spikesX, spikesY, bars)
     
+    def compile(clusters, bars):
+        spikes = SpikeCluster.merge(clusters)
+        spikes.bars = bars
+        return spikes
+    
     def truncate(cluster, ratio):
         startI = 0
         curr_y = cluster.spikesY[startI]

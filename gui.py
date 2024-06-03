@@ -8,11 +8,13 @@ from matplotlib.gridspec import GridSpec
 import MatchCandidatesGenerator
 from FeatureExtractor import *
 from Matcher import *
+from SpikeLinker import *
 
 '''
 MAINTAIN THOSE IMPORTS UP TO DATE
 '''
 import loader
+import saver
 from SpikeCluster import *
 from PlotCurve import *
 from themes import *
@@ -68,6 +70,11 @@ class GUI:
         self.match_button = Button(master=self.master, command=self.match_regions, height=2, width=20, text="Match selected regions")
         self.match_button.pack()
 
+        self.match_spikes_button = Button(master=self.master, command=self.match_spikes, height=2, width=20, text="Match spikes given regions")
+        self.match_spikes_button.pack()
+
+        self.run_blackbox_button = Button(master=self.master, command=self.run_blackbox, height=2, width=20, text="Run black box button")
+        self.run_blackbox_button.pack()
 
         # Menu
         menu = Menu(master)
@@ -122,23 +129,14 @@ class GUI:
         if len(self.plots) > 1:
             target_plot_index = 1
             current_plot_index = 0
-            '''
-            for plot in self.plots:
-                if plot.enabled:
-                    break
-                target_plot_index += 1
-            for plot in self.plots:
-                if not plot.enabled:
-                    break
-                current_plot_index += 1
-            '''
+            
             target_plot = self.plots[target_plot_index]
             current_plot = self.plots[current_plot_index]
 
             target_rangex, target_rangey, target_clusters = target_plot.get_ranges()
             current_rangex, current_rangey, current_clusters = current_plot.get_ranges()
             if not target_clusters or not current_clusters:
-                print("wut target_clusters/current_clusters?")
+                print("no target_clusters/current_clusters")
                 return
             target_cluster = SpikeCluster.merge(target_clusters)
             target_cluster, new_start_target, new_end_target = SpikeCluster.truncate(target_cluster, 0.01)
@@ -153,20 +151,63 @@ class GUI:
             target_plot.set_ranges([(target_cluster.spikesX[target_start], target_cluster.spikesX[target_end])])
             print("selecting range in current plot of", x_start, ":", x_end)
             current_plot.set_ranges([(x_start, x_end)])
-        '''
-        i = 0
-        for plot in self.plots:
-            if plot.enabled:
-                rangex, rangey, clusters = plot.get_ranges()
-                ranges = []
-                for cluster in clusters:
-                    if cluster.is_over_noise_threshold():
-                        ranges.append((cluster.spikesX[0], cluster.spikesX[-1]))
-                plot.set_ranges(ranges)
-            i += 1
-        '''
+            
         #filterTree = FilterTree.build()
         self.canvas.draw()
+        pass
+    def match_spikes(self):
+        if len(self.plots) > 1 and len(self.bars) > 1:
+            target_plot_index = 1
+            current_plot_index = 0
+            
+            target_plot = self.plots[target_plot_index]
+            current_plot = self.plots[current_plot_index]
+
+            target_rangex, target_rangey, target_clusters = target_plot.get_ranges()
+            current_rangex, current_rangey, current_clusters = current_plot.get_ranges()
+            if not target_clusters or not current_clusters:
+                print("no target_clusters/current_clusters")
+                return
+            target_cluster = SpikeCluster.merge(target_clusters)
+            current_clusters = SpikeCluster.merge(current_clusters)
+
+            target_x_start = target_cluster.spikesX[0]
+            target_x_end = target_cluster.spikesX[-1]
+            current_x_start = current_clusters.spikesX[0]
+            current_x_end = current_clusters.spikesX[-1]
+
+            target = self.bars[target_plot_index].spikes_data
+            current = self.bars[current_plot_index].spikes_data
+
+            SpikeLinker.link(target_x_start, target_x_end, target, current_x_start, current_x_end, current)
+        pass
+
+    def run_blackbox(self):
+        print("Saving every changes to files...")
+
+        if len(self.plots) > 1 and len(self.bars) > 1:
+            target_plot_index = 1
+            current_plot_index = 0
+            
+            target_plot = self.plots[target_plot_index]
+            current_plot = self.plots[current_plot_index]
+
+            target_bars = self.bars[target_plot_index]
+            current_bars = self.bars[current_plot_index]
+
+            target_compiled = SpikeCluster.compile(target_plot.spikes_clusters, target_bars.spikes_data)
+            current_compiled = SpikeCluster.compile(current_plot.spikes_clusters, current_bars.spikes_data)
+
+            saver.write_XY("./result_current.xy", current_compiled.spikesX, current_compiled.spikesY)
+            saver.write_ASG("./result_current.asg", current_compiled.bars)
+
+        print("Done saving changes!")
+        
+        print("Starting to run the black box...")
+
+
+
+        print("Done running the black box!")
         pass
 
     def select(self, plot):
