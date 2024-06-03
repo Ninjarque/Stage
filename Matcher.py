@@ -26,6 +26,7 @@ class Matcher:
         real_target_end = 0
 
         for r in range(reccursions):
+            print("#### RECCURSION, step", r, "####")
             #as of now, every reccursion doesn't change squat about the previous ones
             #first we'll need to change the precision over reccursions -> somewhat done, but target_start (and maybe end) error, seems like set to 0, needs to accumulate maybe
             #then we'll

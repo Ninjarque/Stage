@@ -12,6 +12,8 @@ from FeatureFilter import *
 FEATURE_EXTRACTOR_SLIDING_STEP = 1
 FEATURE_EXTRACTOR_TRUNCATE_RATIO = 0.01 #0.0
 
+DEBUG_FEATURE = False
+
 def generate_noise_curve(length, scale=1.0, octaves=4, persistence=0.5, lacunarity=2.0, seed=None):
     if seed is not None:
         random.seed(seed)
@@ -140,6 +142,14 @@ class FeatureExtractor(ABC):
                 min_dist = dist
                 min_index_start = start
                 min_index_end = start + window_size
+
+                if DEBUG_FEATURE:
+                    sucx = np.array(sub_curvex) - sub_curvex[0]
+                    smcx = np.array(smaller_curvex) - smaller_curvex[0]
+                    plt.suptitle('Distance feature, dist:{}'.format(min_dist))
+                    plt.plot(sucx, sub_curvey, 'b-')
+                    plt.plot(smcx, smaller_curvey, 'r-')
+                    plt.show()
                 
 
         if len(current_curvex) < len(target_curvex):
@@ -221,17 +231,23 @@ class RandomFeatureExtractor(FeatureExtractor):
         return features
     
     def distance(self, target_curvex, target_curvey, current_curvex, current_curvey, target_features, current_features):
-        target_curvex = np.array(target_curvex) - target_curvex[0]
-        current_curvex = np.array(current_curvex) - current_curvex[0]
+        #target_curvex = np.array(target_curvex) - target_curvex[0]
+        #current_curvex = np.array(current_curvex) - current_curvex[0]
         
-        dt = np.array(target_features) - np.array(current_features)
-        d_features = np.linalg.norm(dt)
+        _dt = np.array(target_features) - np.array(current_features)
+        df = np.sum(np.abs(_dt))#np.linalg.norm(dt)
+
+        dx = np.abs(target_curvex[0] - current_curvex[0])
+
+        rf = 0.1
+        rx = 16.0
+        d = (df * rf + dx * rx) / (rf + rx)
 
         #print("dist feature:", d_features, "dist curve's y:", d_curvey, "total dist:", d)
 
-        return d_features
+        return d
 
-class DistanceFeatureExtractor(FeatureExtractor):
+class ShapeFeatureExtractor(FeatureExtractor):
     def __init__(self, scales = [0.75, 1.0, 1.25, 1.5]):
         self.scales = scales
 
@@ -243,8 +259,7 @@ class DistanceFeatureExtractor(FeatureExtractor):
         for scale in self.scales:
             current_x = [i - len(current_curvex) / 2 for i in range(len(current_curvex))]
             target_x = [(i - len(target_curvey) / 2) * scale for i in range(len(target_curvey))]
-            #print("target_x", len(target_x))
-            #print("target_curvey", len(target_curvey))
+
             new_target_curvey = np.interp(current_x, target_x, target_curvey)
             dt = np.array(new_target_curvey) - np.array(current_curvey)
             d_curvey = np.sum(np.abs(dt))
@@ -252,13 +267,35 @@ class DistanceFeatureExtractor(FeatureExtractor):
 
             if min_dist == -1 or d_curvey < min_dist:
                 min_dist = d_curvey
-                #print("target_x indexes:", target_x)
-                #print("current_x indexes:", current_x)
-                #print("target_curvey length:", len(target_curvey))
-                #plt.suptitle('Distance feature extractor scale x{}'.format(scale))
-                #plt.plot(current_x, new_target_curvey, 'b-')
-                #plt.plot(current_x, current_curvey, 'r-')
-                #plt.plot(current_x, dt, 'g-')
-                #plt.show()
+
+        return min_dist
+    
+class DistanceFeatureExtractor(FeatureExtractor):
+    def __init__(self, scales = [0.75, 1.0, 1.25, 1.5], shape_ratio = 1.0, x_dist_ratio = 10.0):
+        self.scales = scales
+        self.shape_ratio = shape_ratio
+        self.x_dist_ratio = x_dist_ratio
+
+    def extract_features(self, curvex, curvey):
+        return []
+    
+    def distance(self, target_curvex, target_curvey, current_curvex, current_curvey, target_features, current_features):
+        min_dist = -1
+        for scale in self.scales:
+            current_x = [i - len(current_curvex) / 2 for i in range(len(current_curvex))]
+            target_x = [(i - len(target_curvey) / 2) * scale for i in range(len(target_curvey))]
+            
+            new_target_curvey = np.interp(current_x, target_x, target_curvey)
+            dt = np.array(new_target_curvey) - np.array(current_curvey)
+            d_curvey = np.sum(np.abs(dt))
+
+
+            dx = np.abs(target_curvex[0] - current_curvex[0])
+
+            d = (d_curvey * self.shape_ratio + dx * self.x_dist_ratio) / (self.shape_ratio + self.x_dist_ratio)
+            
+
+            if min_dist == -1 or d < min_dist:
+                min_dist = d
 
         return min_dist
