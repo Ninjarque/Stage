@@ -116,12 +116,20 @@ class GUI:
 
     def test(self):
         #large test
-        #self.plots[1].set_ranges([(1032.110, 1032.125)])
-        #self.plots[0].set_ranges([(1032.020, 1032.160)])
+        self.plots[1].set_ranges([(1032.110, 1032.125)])
+        self.plots[0].set_ranges([(1032.020, 1032.160)])
         
         #second spike small test
-        self.plots[1].set_ranges([(1032.240, 1032.245)])
-        self.plots[0].set_ranges([(1032.265, 1032.280)])
+        #self.plots[1].set_ranges([(1032.240, 1032.245)])
+        #self.plots[0].set_ranges([(1032.265, 1032.280)])
+
+        #third spike large test
+        #self.plots[1].set_ranges([(1032.350, 1032.370)])
+        #self.plots[0].set_ranges([(1032.265, 1032.550)])
+
+        #fourth spike huge test
+        #self.plots[1].set_ranges([(1032.800, 1032.900)])
+        #self.plots[0].set_ranges([(1032.550, 1033.150)])
 
         pass
 
@@ -147,7 +155,7 @@ class GUI:
             matchDistance = MatchingStep(DistanceFeatureExtractor([0.66, 0.75, 1.0, 1.25, 1.5, 1.66, 1.75], 1.0, 10.0), 0.5, 1.0)
             matchShape = MatchingStep(ShapeFeatureExtractor([0.5, 0.75, 1.0, 1.5, 1.75]), 0.5, 1.0)
             matcher = Matcher(matchDistance)#matchingStep1)#, matchingStep2)
-            target_start, target_end, x_start, x_end = matcher.match(target_cluster, current_clusters, 1)#3)
+            target_start, target_end, x_start, x_end, target_tree, current_tree = matcher.match(target_cluster, current_clusters, 1)#3)
             
             #target_plot.set_ranges([(target_cluster.spikesX[target_start], target_cluster.spikesX[target_end])])
             target_plot.set_ranges([(target_start, target_end)])
@@ -171,28 +179,30 @@ class GUI:
                 print("no target_clusters/current_clusters")
                 return
             target_cluster = SpikeCluster.merge(target_clusters)
-            current_clusters = SpikeCluster.merge(current_clusters)
-
-            range_growth_ratio = 0.2
-
-            target_x_start = target_rangex[0]
-            target_x_end = target_rangex[-1]
-            target_x_dt = np.abs(target_x_start - target_x_end) * range_growth_ratio
-            target_x_start -= target_x_dt
-            target_x_end += target_x_dt
-            target_plot.set_ranges([(target_x_start, target_x_end)])
-
-            current_x_start = current_rangex[0]
-            current_x_end = current_rangex[-1]
-            current_x_dt = np.abs(current_x_end - current_x_start) * range_growth_ratio
-            current_x_start -= current_x_dt
-            current_x_end += current_x_dt
-            current_plot.set_ranges([(current_x_start, current_x_end)])
-
+            current_cluster = SpikeCluster.merge(current_clusters)
+    
             target = self.bars[target_plot_index].spikes_data
             current = self.bars[current_plot_index].spikes_data
 
-            SpikeLinker.link(target_x_start, target_x_end, target, current_x_start, current_x_end, current)
+            target_cluster, _, _ = SpikeCluster.truncate_range_x(target_cluster, target_rangex[0], target_rangex[-1])
+            current_cluster, _, _ = SpikeCluster.truncate_range_x(current_cluster, current_rangex[0], current_rangex[-1])
+
+            target_tree = Splitter.generate_tree(target_cluster.spikesX, target_cluster.spikesY)
+            current_tree = Splitter.generate_tree(current_cluster.spikesX, current_cluster.spikesY)
+
+            #print("target_rangex[0]", target_rangex[0], ":", target_rangex[-1], "len target_cluster.spikesX", len(target_cluster.spikesX))
+            #print("current_rangex[0]", current_rangex[0], ":", current_rangex[-1], "len current_cluster.spikesX", len(current_cluster.spikesX))
+
+            target_splits = target_tree.get_splits()
+            current_splits = current_tree.get_splits()
+            #print("target_splits", target_splits, "for length", target_tree.length())
+            #print("current_splits", current_splits, "for length", current_tree.length())
+
+            target_tree.show(target_cluster.spikesX, target_cluster.spikesY)
+            current_tree.show(current_cluster.spikesX, current_cluster.spikesY)
+            
+            SpikeLinker.link_splits(target_splits, target_cluster.spikesX, target_cluster.spikesY, target, current_splits, current_cluster.spikesX, current_cluster.spikesY, current)
+            #SpikeLinker.link(target_x_start, target_x_end, target, current_x_start, current_x_end, current)
         pass
 
     def run_blackbox(self):

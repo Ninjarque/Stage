@@ -4,10 +4,12 @@ import numpy as np
 from SpikeCluster import *
 from AverageManager import *
 
-X_SPACING_RATIO_BEFORE_SPLIT = 1.5
+from CurveUtils import *
 
-def moving_average(data, window_size):
-    return np.convolve(data, np.ones(window_size)/window_size, mode='same')
+X_SPACING_RATIO_BEFORE_SPLIT = 1.5
+THRESHOLD_SPLITTING_ITERATIONS_STEPS = 150
+
+SPLITTING_IGNORE_NOISE_RATIO_THRESHOLD = 0.01
 
 def diff_ratio(r1, r2):
     return abs(r1 - r2) / (r1 + r2)
@@ -65,8 +67,8 @@ class SplitTree:
             return 1
         return self.left.length() + self.right.length()
     
-    def show(self, curvex, curvey, max_split_depth = -1):
-        splits = self.get_splits(max_split_depth)
+    def show(self, curvex, curvey, max_split_depth=-1):
+        splits = self.get_splits(max_depth=max_split_depth)
         plt.suptitle('Showing tree with {} splits'.format(len(splits)))
         c = 0
         plt.plot(curvex, curvey, '--')
@@ -78,13 +80,13 @@ class SplitTree:
             c = np.mod(c + 1, len(colors))
         plt.show()
 
-    def get_splits(self, max_depth = -1, offset = 0):
-        if max_depth == 0 or not self.has_child():
+    def get_splits(self, max_depth=-1, offset=0):
+        if not self.has_child() or (max_depth == 0 and max_depth != -1):
             return [(self.range[0] + offset + self.offset, self.range[1] + offset + self.offset)]
-        sl = self.left.get_splits(offset)
-        sr = self.right.get_splits(offset)
-        if max_depth != -1:
+        if max_depth > 0:
             max_depth -= 1
+        sl = self.left.get_splits(max_depth=max_depth, offset=offset)
+        sr = self.right.get_splits(max_depth=max_depth, offset=offset)
         return sl + sr
 
 class Splitter:
@@ -155,7 +157,7 @@ class Splitter:
         #plt.plot(curvex, curvey, 'r-')
         #plt.plot(cx, cy, 'b-')
         #plt.show()
-        tries = 100
+        tries = THRESHOLD_SPLITTING_ITERATIONS_STEPS
 
         while splits_count != 2 and i < tries:
             y = i / tries * (maxy - miny) + miny
@@ -171,38 +173,18 @@ class Splitter:
         if i >= tries:
             #print("failed to split")
             return False, splits
-        '''
-        lst_center = -1
-        while splits_count != 2:
-            if splits_count > 2:
-                maxy = center
-            else:
-                miny = center
-            center = (maxy + miny) / 2.0
-            if int(10 * center) == int(10 * lst_center) or i >= 50:
-                plt.suptitle('Could not find splits for curve [{},{}] {}'.format(i, splits_count, int(100 * maxy) / 100, int(100 * miny) / 100, int(100 * center) / 100))
-                plt.plot(curvex, curvey, 'r-')
-                plt.plot(cx, cy, 'b-')
-                plt.show()
-                return False, (0, len(curvex) - 1)
-            cx, cy = Splitter.apply_threshold(curvex, curvey, center)
-            splits_count, splits = Splitter.get_splits(cx, cy)
-            lst_center = center
-            i += 1
-            #plt.suptitle('i:{}, splits:{}, Trying split threshold [{},{}] {}'.format(i, splits_count, int(100 * maxy) / 100, int(100 * miny) / 100, int(100 * center) / 100))
-            #plt.plot(curvex, curvey, 'r-')
-            #plt.plot(cx, cy, 'b-')
-            #plt.show()
-        '''
             
         return True, splits
     
-    def generate_tree(curvex, curvey, average_smoothing_ratio=0.1, prune_below_ratio = 0.0, offset = 0):
+    def generate_tree(base_curvex, base_curvey, average_smoothing_ratio=0.1, prune_below_ratio = 0.1, offset = 0, ignore_ratio_threshold = SPLITTING_IGNORE_NOISE_RATIO_THRESHOLD):
+        maxy = max(base_curvey)
+        miny = min(base_curvey)
+        curvex, curvey = Splitter.apply_threshold(base_curvex, base_curvey, (maxy - miny) * ignore_ratio_threshold + miny)
         avg_curvey = curvey
         window_size = int(len(curvex) * average_smoothing_ratio)
         if window_size > 0:
             window_size = int(len(curvex) * average_smoothing_ratio)
-            avg_curvey = moving_average(curvey, window_size)
+            avg_curvey = CurveUtils.moving_average(curvey, window_size)
         
 
         #plt.suptitle('Generating tree of [{},{}]'.format(0, len(curvex)))
@@ -212,35 +194,15 @@ class Splitter:
         can_split, splits = Splitter.try_split(curvex, avg_curvey)
 
         if not can_split:
-            #print("offset:", offset)
+            #can't split
             return SplitTree(range=(0, len(curvex) - 1), offset=offset)
 
         left_split = splits[0]
         right_split = splits[1]
         #print("left")
-        left_tree = Splitter.generate_tree(curvex[left_split[0]:left_split[1]+1], curvey[left_split[0]:left_split[1]+1], average_smoothing_ratio, offset=offset + left_split[0])
+        left_tree = Splitter.generate_tree(base_curvex[left_split[0]:left_split[1]+1], base_curvey[left_split[0]:left_split[1]+1], average_smoothing_ratio, offset=offset + left_split[0], ignore_ratio_threshold=ignore_ratio_threshold*0.1)
         #print("right")
-        right_tree = Splitter.generate_tree(curvex[right_split[0]:right_split[1]+1], curvey[right_split[0]:right_split[1]+1], average_smoothing_ratio, offset=offset + right_split[0])
+        right_tree = Splitter.generate_tree(base_curvex[right_split[0]:right_split[1]+1], base_curvey[right_split[0]:right_split[1]+1], average_smoothing_ratio, offset=offset + right_split[0], ignore_ratio_threshold=ignore_ratio_threshold*0.1)
 
-        tree = SplitTree(left=left_tree, right=right_tree, range=(0, len(curvex) - 1), offset=offset)
+        tree = SplitTree(left=left_tree, right=right_tree, range=(0, len(base_curvex) - 1), offset=offset)
         return tree.prune(prune_below_ratio)
-    
-    '''
-    def match_trees(target_tree, current_tree, target_length, current_length, prune_ratio = 0.25, diff_span_ratio_threshold = 0.2):
-        target_tree = target_tree.prune(prune_ratio)
-        current_tree = current_tree.prune(prune_ratio)
-
-        target_span_ratio = target_tree.compute_span_ratio(target_length)
-        current_span_ratio = current_tree.compute_span_ratio(current_length)
-
-        smallest, biggest = target_tree, current_tree
-        smallest_span_ratio, biggest_span_ratio = target_span_ratio, current_span_ratio
-        if target_span_ratio > current_span_ratio:
-            smallest, biggest = current_tree, target_tree
-            smallest_span_ratio, biggest_span_ratio = current_span_ratio, target_span_ratio
-
-        while diff_ratio(smallest_span_ratio, biggest_span_ratio) > diff_span_ratio_threshold:
-            break
-
-        pass
-    '''
