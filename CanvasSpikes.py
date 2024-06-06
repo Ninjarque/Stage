@@ -118,14 +118,24 @@ class CanvasSpikes:
 
             if self.hovered_lines and click_released and not moved_too_much:
                 self.selected_lines = self.hovered_lines
-                for line in self.selected_lines:
-                    x = line.get_xdata()[0]
-                    spike = dichotomy.nearest_index(x, self.x_data)
-                    print("The closest spike to current selection is:", self.spikes_data[spike].id)
+                selected_spikes = self.lines_to_spikes(self.selected_lines)
+                for spike in selected_spikes:
+                    print("The closest spike to current selection is:", spike.id)
                 self.draw()
                 #lines are getting cleared upon move, further testing will be required
 
         return rcode
+    
+    def lines_to_spikes(self, lines):
+        selected_spikes = []
+        for line in self.selected_lines:
+            x = line.get_xdata()[0]
+            spikes_range = dichotomy.nearest_indexes(x, self.x_data, len(lines))
+            data = self.spikes_data[spikes_range[0]:spikes_range[1] + 1]
+            for spike in data:
+                if x == spike.x and not spike in selected_spikes:
+                    selected_spikes.append(spike)
+        return selected_spikes
     
     def update_key(self, key, pressed, released):
         if not self.enabled:
