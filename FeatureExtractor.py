@@ -199,7 +199,7 @@ class FeatureExtractor(ABC):
         dist, start, end = self.sliding_distance(target_curvex, target_curvey, cx, cy, sliding_step)
         print("dist", dist, "from", start, "to", end, " [", cx[0], ",", cx[-1], "]")
         
-        return target_start, target_end, start, end
+        return target_start, target_end, start, end, dist
 
 
 class RandomFeatureExtractor(FeatureExtractor):
