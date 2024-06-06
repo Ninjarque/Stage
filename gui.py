@@ -139,17 +139,18 @@ class GUI:
                 print("no target_clusters/current_clusters")
                 return
             target_cluster = SpikeCluster.merge(target_clusters)
-            target_cluster, new_start_target, new_end_target = SpikeCluster.truncate(target_cluster, 0.01)
+            target_cluster, new_start_target, new_end_target = SpikeCluster.truncate(target_cluster, 0.2, 0.15)
 
             current_clusters = SpikeCluster.merge(current_clusters)
 
-            matchRandom = MatchingStep(RandomFeatureExtractor(100, 200), 1.0, 1.0, 1.0)#0.5, 1.0, 0.5)
-            matchDistance = MatchingStep(DistanceFeatureExtractor([0.5, 0.75, 1.0, 1.5, 1.75], 1.0, 10.0), 0.5, 1.0, 0.5)
-            matchShape = MatchingStep(ShapeFeatureExtractor([0.5, 0.75, 1.0, 1.5, 1.75]), 0.5, 1.0, 0.5)
+            matchRandom = MatchingStep(RandomFeatureExtractor(100, 200), 1.0, 1.0)#0.5, 1.0, 0.5)
+            matchDistance = MatchingStep(DistanceFeatureExtractor([0.66, 0.75, 1.0, 1.25, 1.5, 1.66, 1.75], 1.0, 10.0), 0.5, 1.0)
+            matchShape = MatchingStep(ShapeFeatureExtractor([0.5, 0.75, 1.0, 1.5, 1.75]), 0.5, 1.0)
             matcher = Matcher(matchDistance)#matchingStep1)#, matchingStep2)
-            target_start, target_end, x_start, x_end = matcher.match(target_cluster, current_clusters, 3)#3)
+            target_start, target_end, x_start, x_end = matcher.match(target_cluster, current_clusters, 1)#3)
             
-            target_plot.set_ranges([(target_cluster.spikesX[target_start], target_cluster.spikesX[target_end])])
+            #target_plot.set_ranges([(target_cluster.spikesX[target_start], target_cluster.spikesX[target_end])])
+            target_plot.set_ranges([(target_start, target_end)])
             print("selecting range in current plot of", x_start, ":", x_end)
             current_plot.set_ranges([(x_start, x_end)])
             

@@ -57,7 +57,7 @@ class SpikeCluster:
         spikes.bars = bars
         return spikes
     
-    def truncate(cluster, ratio):
+    def truncate(cluster, ratio, regrow = 0):
         startI = 0
         curr_y = cluster.spikesY[startI]
         smaller_truncate_threshold = max(cluster.spikesY) * ratio
@@ -73,10 +73,16 @@ class SpikeCluster:
         #if startI != 0 or endI != len(self.spikesY):
         #    print("actually doing something? [", startI, ",", endI, "], originaly [", 0, ",", len(self.spikesY), "]")
 
+        truncated_length = endI - startI + 1
+        regrow_length = int(truncated_length * regrow / 2.0)
+
+        startI = max(0, startI - regrow_length)
+        endI = min(len(cluster.spikesY) - 1, endI + regrow_length)
+
         print("truncated from [", 0, ",", len(cluster.spikesY) - 1, "] to [", startI, ",", endI, "], with threshold of ", smaller_truncate_threshold, "/", max(cluster.spikesY))
 
-        spikesX = cluster.spikesX[startI:endI]
-        spikesY = cluster.spikesY[startI:endI]
+        spikesX = cluster.spikesX[startI:endI+1]
+        spikesY = cluster.spikesY[startI:endI+1]
         countI = endI - startI
         
         bars = []
@@ -93,8 +99,8 @@ class SpikeCluster:
         return SpikeCluster.truncate_range_index(cluster, startI, endI)
     
     def truncate_range_index(cluster, startI, endI):
-        spikesX = cluster.spikesX[startI:endI]
-        spikesY = cluster.spikesY[startI:endI]
+        spikesX = cluster.spikesX[startI:endI+1]
+        spikesY = cluster.spikesY[startI:endI+1]
         countI = endI - startI + 1
 
         bars = []
