@@ -65,8 +65,8 @@ class SplitTree:
             return 1
         return self.left.length() + self.right.length()
     
-    def show(self, curvex, curvey):
-        splits = self.get_splits()
+    def show(self, curvex, curvey, max_split_depth = -1):
+        splits = self.get_splits(max_split_depth)
         plt.suptitle('Showing tree with {} splits'.format(len(splits)))
         c = 0
         plt.plot(curvex, curvey, '--')
@@ -78,11 +78,13 @@ class SplitTree:
             c = np.mod(c + 1, len(colors))
         plt.show()
 
-    def get_splits(self, offset = 0):
-        if not self.has_child():
+    def get_splits(self, max_depth = -1, offset = 0):
+        if max_depth == 0 or not self.has_child():
             return [(self.range[0] + offset + self.offset, self.range[1] + offset + self.offset)]
         sl = self.left.get_splits(offset)
         sr = self.right.get_splits(offset)
+        if max_depth != -1:
+            max_depth -= 1
         return sl + sr
 
 class Splitter:

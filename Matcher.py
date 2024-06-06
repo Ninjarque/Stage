@@ -37,8 +37,8 @@ class Matcher:
             target_tree = Splitter.generate_tree(target_chunk.spikesX, target_chunk.spikesY)
             current_tree = Splitter.generate_tree(current_chunk.spikesX, current_chunk.spikesY)
 
-            target_tree.show(target_chunk.spikesX, target_chunk.spikesY)
-            current_tree.show(current_chunk.spikesX, current_chunk.spikesY)
+            target_tree.show(target_chunk.spikesX, target_chunk.spikesY, 1)
+            current_tree.show(current_chunk.spikesX, current_chunk.spikesY, 1)
 
             if r < reccursions - 1:
                 target_chunk, target_start, target_end = SpikeCluster.truncate(target_chunk, TRUNCATE_PERCENTAGE_PER_ITERATION)
