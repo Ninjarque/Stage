@@ -15,6 +15,14 @@ class Theme:
         print("Theme error, no palette found for '", object, "'!")
         return self.error_palette
     
+    def get_palettes_count(self, containing_object):
+        count = 0
+        for k, v in self.palettes.items():
+            if containing_object in k:
+                count += 1
+        return count
+
+    
     def to_dict(self):
         return {
             "palettes": {k: v.to_dict() for k, v in self.palettes.items()},

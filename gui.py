@@ -4,15 +4,21 @@ from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import (FigureCanvasTkAgg,  
 NavigationToolbar2Tk)
 from matplotlib.gridspec import GridSpec
+import subprocess
+
+'''
+MAINTAIN THOSE IMPORTS UP TO DATE
+'''
+from LinkCurvesSpikesDialog import *
 
 import MatchCandidatesGenerator
 from FeatureExtractor import *
 from Matcher import *
 from SpikeLinker import *
 
-'''
-MAINTAIN THOSE IMPORTS UP TO DATE
-'''
+from ProjectManager import *
+from Project import *
+
 import loader
 import saver
 from SpikeCluster import *
@@ -81,8 +87,15 @@ class GUI:
         self.master.config(menu=menu)
         filemenu = Menu(menu)
         menu.add_cascade(label='File', menu=filemenu)
-        filemenu.add_command(label='New')
-        filemenu.add_command(label='Open...')
+        filemenu.add_command(label='New project', command=self.new_project)
+        filemenu.add_separator()
+        filemenu.add_command(label='Open project', command=self.open_project)
+        filemenu.add_command(label='Open curve', command=self.open_curve)
+        filemenu.add_command(label='Open spikes', command=self.open_spikes)
+        filemenu.add_separator()
+        filemenu.add_command(label='Link graphs', command=self.link_plots_spikes)
+        filemenu.add_separator()
+        filemenu.add_command(label='Save project', command=self.save_project)
         filemenu.add_separator()
         filemenu.add_command(label='Exit', command=master.quit)
         helpmenu = Menu(menu)
@@ -97,9 +110,18 @@ class GUI:
         self.x_range = 0.0
         self.y_range = 0.0
 
-        self.plot()
+        self.plots = []
+        self.bars = []
 
-        self.test()
+        self.init_plots()
+
+        ProjectManager.init_project()
+        ProjectManager.auto_load()
+
+        #self.open_project(self.project)
+        self.load_project_data()
+
+        #self.test()
 
     def toggle_curves(self):
         if len(self.plots) == 0:
@@ -228,7 +250,13 @@ class GUI:
         
         print("Starting to run the black box...")
 
-
+        try:
+            subprocess.call(["./job_xfit_nu3"])
+            subprocess.call(["./job_cal_nu3"])
+            subprocess.call(["./job_sim_nu3"])
+            print("Ran every black box command!")
+        except:
+            print("Couldn't run the commands, try verifying that the required files are in the correct path and that you are using Mac or Linux!")
 
         print("Done running the black box!")
         pass
@@ -249,6 +277,136 @@ class GUI:
             bar_i += 1
         self.canvas.draw()
 
+    def new_project(self):
+        ProjectManager.init_project()
+        self.load_project_data()
+        ProjectManager.auto_save()
+
+    def open_project(self):
+        root = tk.Tk()
+        root.withdraw()  # Hide the root window
+        file_path = filedialog.askopenfilename()
+        if not file_path:
+            return
+        ProjectManager.load_project(file_path)
+
+        ProjectManager.auto_save()
+
+    def save_project(self):
+        ProjectManager.auto_save()
+
+    def load_project_data(self):
+        print("Loading project...")
+
+        self.plots.clear()
+        self.bars.clear()
+
+        paths = ProjectManager.get_curve_paths()
+        themes = ProjectManager.get_curve_themes()
+        for i in range(len(paths)):
+            p = paths[i]
+            t = themes[i]
+            self.open_curve_file(p, t)
+        paths = ProjectManager.get_spikes_paths()
+        themes = ProjectManager.get_spikes_themes()
+        for i in range(len(paths)):
+            p = paths[i]
+            t = themes[i]
+            self.open_spikes_file(p, t)
+
+        print("Done loading project!")
+
+    def open_curve(self):
+        root = tk.Tk()
+        root.withdraw()  # Hide the root window
+        file_path = filedialog.askopenfilename()
+        if not file_path:
+            return
+        filename, file_extension = os.path.splitext(file_path)
+        
+        p = int(np.mod(len(self.plots) - 1, DefaultTheme.get_palettes_count("graph"))) + 1
+        theme = "graph" + str(p)
+
+        self.open_curve_file(file_path, theme)
+
+        ProjectManager.append_curve(filename, file_path, theme)
+        ProjectManager.auto_save()
+        
+        self.canvas.draw()
+        
+    def open_curve_file(self, file_path, theme):
+        clusters = None
+        filename, file_extension = os.path.splitext(file_path)
+        print("File '", filename, "' is '", file_extension, "' format!")
+        if "dpt" in file_extension.lower():
+            clusters = loader.parse_DPT(file_path)
+        elif "xy" in file_extension.lower():
+            clusters = loader.parse_XY(file_path)
+
+        self.plots.append(
+        PlotCurve(
+            self.graphs_plot, clusters, 
+            0.02,
+            DefaultTheme.get_palette(theme),
+            RANGE_MODE_CLUSTERS
+        )
+        )
+        plot_i = 0
+        for plot in self.plots:
+            if plot_i == len(self.plots) - 1:
+                plot.enable()
+                plot.set_zorder(1)
+            else:
+                plot.disable()
+                plot.set_zorder(0)
+            plot_i += 1
+
+    def open_spikes(self):
+        root = tk.Tk()
+        root.withdraw()  # Hide the root window
+        file_path = filedialog.askopenfilename()
+        if not file_path:
+            return
+        filename, file_extension = os.path.splitext(file_path)
+        
+        p = int(np.mod(len(self.bars) - 1, DefaultTheme.get_palettes_count("bars"))) + 1
+        theme = "bars" + str(p)
+
+        self.open_spikes_file(file_path, theme)
+        
+        ProjectManager.append_spikes(filename, file_path, theme)
+        ProjectManager.auto_save()
+        
+        self.canvas.draw()
+
+    def open_spikes_file(self, file_path, theme):
+        bars = None
+        filename, file_extension = os.path.splitext(file_path)
+        print("File '", filename, "' is '", file_extension, "' format!")
+        if "t" in file_extension.lower():
+            bars = loader.parse_T(file_path)
+            xdata = [b.x for b in bars]
+        if "asg" in file_extension.lower():
+            bars = loader.parse_ASG(file_path)
+            xdata = [b.x for b in bars]
+
+        self.bars.append(CanvasSpikes(self.bars_plot, bars, xdata, DefaultTheme.get_palette(theme)))
+        plot_i = 0
+        for plot in self.plots:
+            if plot_i == len(self.plots) - 1:
+                plot.enable()
+                plot.set_zorder(1)
+            else:
+                plot.disable()
+                plot.set_zorder(0)
+            plot_i += 1
+
+    def link_plots_spikes(self):
+        app = LinkCurvesSpikesDialog(self.plots, self.bars)
+        app.run()
+
+
+    '''
     def plot(self):
         # the figure that will contain the plot
         fig = Figure(figsize=(10, 8), dpi=100)
@@ -343,7 +501,55 @@ class GUI:
         self.bars_plot.set_xlim(x_lims)
 
         self.canvas.draw()
+    '''
 
+    def init_plots(self):
+        # the figure that will contain the plot
+        fig = Figure(figsize=(10, 8), dpi=100)
+
+        gs = GridSpec(3, 1, figure=fig)  # Divide figure into 3 rows, 1 column
+
+        self.bars_plot = fig.add_subplot(gs[0, 0])  # Top small subplot for bars
+        self.graphs_plot = fig.add_subplot(gs[1:, 0])  # Larger subplot for graphs
+
+        # creating the Tkinter canvas containing the Matplotlib figure
+        self.canvas = FigureCanvasTkAgg(fig, master=self.master)
+        self.canvas.draw()
+
+        #graphs_plot.callbacks.connect('xlim_changed', self.on_xlims_change_graph)
+        self.graphs_plot.callbacks.connect('ylim_changed', self.on_ylims_change)
+        
+        # Connect xlim changes
+        self.bars_plot.callbacks.connect('xlim_changed', lambda ax: self.on_xlims_change(ax, self.graphs_plot))
+        self.graphs_plot.callbacks.connect('xlim_changed', lambda ax: self.on_xlims_change(ax, self.bars_plot))
+
+        #bars_plot.callbacks.connect('xlim_changed', self.on_xlims_change_bars)
+        #bars_plot.callbacks.connect('ylim_changed', self.on_ylims_change_bars)
+  
+        # Connect the mouse movement event to the canvas
+        self.canvas.mpl_connect('motion_notify_event', self.mouse_move)
+        self.canvas.mpl_connect('button_press_event', self.on_click)
+        self.canvas.mpl_connect('button_release_event', self.on_release)
+
+        self.canvas.mpl_connect('key_press_event', self.on_key_press)
+        self.canvas.mpl_connect('key_press_event', self.on_key_release)
+        
+        # placing the canvas on the Tkinter window
+        self.canvas.get_tk_widget().pack()
+
+        # creating the Matplotlib toolbar
+        self.toolbar = NavigationToolbar(self.canvas, self.master)
+        self.toolbar.zoom()
+        self.toolbar.pan()
+        self.toolbar.update()
+        self.canvas.get_tk_widget().pack()
+
+        x_lims = self.graphs_plot.get_xlim()
+        print(x_lims)
+        print(self.bars_plot.get_xlim())
+        self.bars_plot.set_xlim(x_lims)
+
+        self.canvas.draw()
 
     def mouse_move(self, event):
         if event.inaxes and self.start_click_pos:

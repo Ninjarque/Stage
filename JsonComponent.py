@@ -29,13 +29,16 @@ class JsonComponent:
             found.extend(child.find(key, value))
         return found
     
-    @classmethod
-    def save(config, file_path):
+    #@classmethod
+    def save(self, file_path):
         with open(file_path, 'w') as f:
-            json.dump(config.to_dict(), f, indent=4)
+            json.dump(self.to_dict(), f, indent=4)
 
-    @classmethod
+    @staticmethod
     def load(file_path):
         with open(file_path, 'r') as f:
-            data = json.load(f)
+            try:
+                data = json.load(f)
+            except:
+                data = {"name":"None"}
         return JsonComponent.from_dict(data)
