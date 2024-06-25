@@ -1,16 +1,22 @@
+import os
 import matplotlib.pyplot as plt
 
 from PlotCurve import *
 from lod_manager import *
 
+from JsonComponent import JsonComponent
+
 class CanvasSpikes:
-    def __init__(self, ax, spikes_data, x_data, color_palette, linestyle='-'):
+    def __init__(self, file_path, ax, spikes_data, x_data, color_palette, linestyle='-'):
         self.ax = ax
         self.linestyle = linestyle
         self.spikes = []
         self.spikes_data = spikes_data
         self.spikes_data.sort(key=lambda spike: spike.x)
 
+        filename, file_extension = os.path.splitext(file_path)
+        self.name = filename.split("\\")[-1].split("/")[-1]
+        print("Curve name '", self.name, "'")
         self.linked_graph = None
 
         self.enabled = True
@@ -38,6 +44,32 @@ class CanvasSpikes:
         self.spike_mapping = {}  # Add this line
 
         self.create_spikes(dx)
+
+    def to_json_component(self):
+        properties = {
+            "file_path": self.file_path,
+            "theme": self.color_palette.to_dict()
+        }
+        return JsonComponent("CanvasSpikes", properties)
+
+    @classmethod
+    def from_json_component(component, plot):
+        file_path = component.properties.get("file_path", "")
+
+        bars = None
+        xdata = None
+        filename, file_extension = os.path.splitext(file_path)
+        print("File '", filename, "' is '", file_extension, "' format!")
+        if "t" in file_extension.lower():
+            bars = loader.parse_T(file_path)
+            xdata = [b.x for b in bars]
+        if "asg" in file_extension.lower():
+            bars = loader.parse_ASG(file_path)
+            xdata = [b.x for b in bars]
+
+
+        color_palette = ColorPalette.from_dict(component.properties.get("theme", {}))
+        return CanvasSpikes(file_path, plot, bars, xdata, color_palette)
 
 
     def create_spikes(self, x_data):

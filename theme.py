@@ -60,10 +60,10 @@ class ColorPalette:
             "error_color": self.error_color
         }
 
-    @classmethod
-    def from_dict(cls, data):
-        return cls(
+    def from_dict(data):
+        c = ColorPalette(
             colors=data.get("colors", {}),
             properties_default_colors=data.get("properties_default_colors", {}),
             error_color=data.get("error_color", "darkviolet")
         )
+        return c

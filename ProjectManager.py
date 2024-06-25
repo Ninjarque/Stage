@@ -23,6 +23,8 @@ class ProjectManager:
     current_project_path = ""
     config = None
 
+    do_auto_save = True
+
     @staticmethod
     def init_project():
         ProjectManager.current_project = Project()
@@ -30,19 +32,19 @@ class ProjectManager:
 
     @staticmethod
     def save_project_dialog():
-        root = tk.Tk()
-        root.withdraw()
+        #root = tk.Tk()
+        #root.withdraw()
         file_path = filedialog.asksaveasfilename()
         if file_path:
             ProjectManager.save_project(file_path)
 
     @staticmethod
-    def load_project_dialog():
-        root = tk.Tk()
-        root.withdraw()
+    def load_project_dialog(curve_plot, bars_plot):
+        #root = tk.Tk()
+        #root.withdraw()
         file_path = filedialog.askopenfilename()
         if file_path:
-            ProjectManager.load_project(file_path)
+            ProjectManager.load_project(file_path, curve_plot, bars_plot)
 
     @staticmethod
     def save_project(path):
@@ -55,10 +57,10 @@ class ProjectManager:
         ProjectManager.make_backup()
 
     @staticmethod
-    def load_project(path):
+    def load_project(path, curve_plot, bars_plot):
         ProjectManager.current_project_path = path
         json_component = JsonComponent.load(path)
-        ProjectManager.current_project = Project.from_json_component(json_component)
+        ProjectManager.current_project = Project.from_json_component(json_component, curve_plot, bars_plot)
 
     @staticmethod
     def make_backup():
@@ -86,6 +88,7 @@ class ProjectManager:
                 ProjectManager._copy_files_and_update_paths(value, backup_dir)
             elif isinstance(value, str) and 'path' in key:
                 new_path = os.path.join(backup_dir, os.path.basename(value))
+                print("Copying file", value, "to new path", new_path)
                 shutil.copy(value, new_path)
                 data[key] = new_path
 
@@ -104,24 +107,32 @@ class ProjectManager:
         ProjectManager.config.save(APPLICATION_CONFIG_PATH)
 
     @staticmethod
-    def load_config():
+    def load_config(curve_plot, bars_plot):
         if os.path.isfile(APPLICATION_CONFIG_PATH):
             ProjectManager.config = JsonComponent.load(APPLICATION_CONFIG_PATH)
             ProjectManager.current_project_path = ProjectManager.config.properties.get("last_project_path", "")
             if ProjectManager.current_project_path:
-                ProjectManager.load_project(ProjectManager.current_project_path)
+                ProjectManager.load_project(ProjectManager.current_project_path, curve_plot, bars_plot)
 
     @staticmethod
     def auto_save():
+        if not ProjectManager.do_auto_save:
+            print("Auto save disabled...")
+            return
         ProjectManager.save_project(DEFAULT_AUTOSAVE_PROJECT_PATH)
         ProjectManager.save_config()
 
     @staticmethod
-    def auto_load():
-        ProjectManager.load_config()
+    def auto_load(curve_plot, bars_plot):
+        ProjectManager.load_config(curve_plot, bars_plot)
         if os.path.isfile(DEFAULT_AUTOSAVE_PROJECT_PATH):
-            ProjectManager.load_project(DEFAULT_AUTOSAVE_PROJECT_PATH)
-            print("Sucessfully auto loaded project!")
+            ProjectManager.load_project(DEFAULT_AUTOSAVE_PROJECT_PATH, curve_plot, bars_plot)
+            #print("Sucessfully auto loaded project!")
+
+    def enable_auto_save():
+        ProjectManager.do_auto_save = True
+    def disable_auto_save():
+        ProjectManager.do_auto_save = False
 
     
     '''
@@ -137,6 +148,41 @@ class ProjectManager:
         project = ProjectManager.current_project
         project.curve_paths[curve_name] = curve_path
         project.curve_themes[curve_name] = theme
+        ProjectManager.auto_save()
+
+    def set_curve_x_offset(curve_name, x_offset):
+        if not ProjectManager.current_project:
+            ProjectManager.init_project()
+        project = ProjectManager.current_project
+        project.curve_x_offset[curve_name] = x_offset
+        ProjectManager.auto_save()
+    
+    def set_curve_ranges(curve_name, ranges):
+        if not ProjectManager.current_project:
+            ProjectManager.init_project()
+        project = ProjectManager.current_project
+        print("set curve ranges to", ranges)
+        project.curve_ranges[curve_name] = ranges
+        ProjectManager.auto_save()
+
+    def set_curve_themes(curve_name, theme):
+        if not ProjectManager.current_project:
+            ProjectManager.init_project()
+        project = ProjectManager.current_project
+        project.curve_themes[curve_name] = theme
+        ProjectManager.auto_save()
+
+    @staticmethod
+    def get_curve_ranges(curve_name):
+        if not ProjectManager.current_project:
+            ProjectManager.init_project()
+
+        project = ProjectManager.current_project
+        paths = []
+        for p in project.curve_ranges[curve_name]:
+            paths.append(p)
+        print("get curve ranges:", project.curve_ranges)
+        return project.curve_ranges[curve_name]
 
     @staticmethod
     def get_curve_paths():
@@ -158,6 +204,13 @@ class ProjectManager:
         for k, p in project.curve_themes.items():
             paths.append(p)
         return paths
+    @staticmethod
+    def get_curve_xoffset(curve_name):
+        if not ProjectManager.current_project:
+            ProjectManager.init_project()
+
+        project = ProjectManager.current_project
+        return float(project.curve_x_offset[curve_name])
     
     @staticmethod
     def append_spikes(spikes_name, spikes_path, theme):
@@ -167,6 +220,7 @@ class ProjectManager:
         project = ProjectManager.current_project
         project.spikes_paths[spikes_name] = spikes_path
         project.spikes_themes[spikes_name] = theme
+        ProjectManager.auto_save()
 
     @staticmethod
     def get_spikes_paths():

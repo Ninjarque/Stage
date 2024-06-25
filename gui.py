@@ -1,5 +1,6 @@
 import math
 from tkinter import *
+from tkinter import filedialog
 from matplotlib.figure import Figure 
 from matplotlib.backends.backend_tkagg import (FigureCanvasTkAgg,  
 NavigationToolbar2Tk)
@@ -17,7 +18,6 @@ from Matcher import *
 from SpikeLinker import *
 
 from ProjectManager import *
-from Project import *
 
 import loader
 import saver
@@ -116,7 +116,7 @@ class GUI:
         self.init_plots()
 
         ProjectManager.init_project()
-        ProjectManager.auto_load()
+        ProjectManager.auto_load(self.graphs_plot, self.bars_plot)
 
         #self.open_project(self.project)
         self.load_project_data()
@@ -283,12 +283,13 @@ class GUI:
         ProjectManager.auto_save()
 
     def open_project(self):
-        root = tk.Tk()
-        root.withdraw()  # Hide the root window
+        #root = tk.Tk()
+        #root.withdraw()  # Hide the root window
         file_path = filedialog.askopenfilename()
         if not file_path:
+            #root.deiconify()
             return
-        ProjectManager.load_project(file_path)
+        ProjectManager.load_project(file_path, self.graphs_plot, self.bars_plot)
 
         ProjectManager.auto_save()
 
@@ -301,40 +302,51 @@ class GUI:
         self.plots.clear()
         self.bars.clear()
 
+        window.title(ProjectManager.current_project.name)
+        project = ProjectManager.current_project
+
+        self.plots = project.curves
+        self.bars = project.spikes
+
+        '''
+
         paths = ProjectManager.get_curve_paths()
         themes = ProjectManager.get_curve_themes()
         for i in range(len(paths)):
             p = paths[i]
             t = themes[i]
-            self.open_curve_file(p, t)
+            curve = self.open_curve_file(p, t)
         paths = ProjectManager.get_spikes_paths()
         themes = ProjectManager.get_spikes_themes()
         for i in range(len(paths)):
             p = paths[i]
             t = themes[i]
-            self.open_spikes_file(p, t)
+            bars = self.open_spikes_file(p, t)
 
+        '''
+            
         print("Done loading project!")
 
     def open_curve(self):
-        root = tk.Tk()
-        root.withdraw()  # Hide the root window
-        file_path = filedialog.askopenfilename()
+        #root = tk.Tk()
+        #root.withdraw()  # Hide the root window
+        file_path = filedialog.askopenfilename(title="Open spikes (dpt, xy)")
         if not file_path:
+            #root.deiconify()
             return
         filename, file_extension = os.path.splitext(file_path)
         
         p = int(np.mod(len(self.plots) - 1, DefaultTheme.get_palettes_count("graph"))) + 1
         theme = "graph" + str(p)
+        theme = DefaultTheme.get_palette(theme)
 
         self.open_curve_file(file_path, theme)
 
-        ProjectManager.append_curve(filename, file_path, theme)
-        ProjectManager.auto_save()
-        
         self.canvas.draw()
         
     def open_curve_file(self, file_path, theme):
+        ProjectManager.disable_auto_save()
+
         clusters = None
         filename, file_extension = os.path.splitext(file_path)
         print("File '", filename, "' is '", file_extension, "' format!")
@@ -345,9 +357,10 @@ class GUI:
 
         self.plots.append(
         PlotCurve(
-            self.graphs_plot, clusters, 
+            file_path, self.graphs_plot, clusters, 
+            theme,
             0.02,
-            DefaultTheme.get_palette(theme),
+            [],
             RANGE_MODE_CLUSTERS
         )
         )
@@ -361,25 +374,33 @@ class GUI:
                 plot.set_zorder(0)
             plot_i += 1
 
+        curve = self.plots[-1]
+
+        #curve.set_xoffset(ProjectManager.get_curve_xoffset(curve.name))
+
+        ProjectManager.enable_auto_save()
+        return curve
+
     def open_spikes(self):
-        root = tk.Tk()
-        root.withdraw()  # Hide the root window
-        file_path = filedialog.askopenfilename()
+        #root = tk.Tk()
+        #root.withdraw()  # Hide the root window
+        file_path = filedialog.askopenfilename(title="Open spikes (asg, t)")
         if not file_path:
+            #root.deiconify()
             return
         filename, file_extension = os.path.splitext(file_path)
         
         p = int(np.mod(len(self.bars) - 1, DefaultTheme.get_palettes_count("bars"))) + 1
         theme = "bars" + str(p)
+        theme = DefaultTheme.get_palette(theme)
 
         self.open_spikes_file(file_path, theme)
-        
-        ProjectManager.append_spikes(filename, file_path, theme)
-        ProjectManager.auto_save()
         
         self.canvas.draw()
 
     def open_spikes_file(self, file_path, theme):
+        ProjectManager.disable_auto_save()
+
         bars = None
         filename, file_extension = os.path.splitext(file_path)
         print("File '", filename, "' is '", file_extension, "' format!")
@@ -390,7 +411,9 @@ class GUI:
             bars = loader.parse_ASG(file_path)
             xdata = [b.x for b in bars]
 
-        self.bars.append(CanvasSpikes(self.bars_plot, bars, xdata, DefaultTheme.get_palette(theme)))
+        self.bars.append(
+        CanvasSpikes(file_path, self.bars_plot, bars, xdata, theme)
+        )
         plot_i = 0
         for plot in self.plots:
             if plot_i == len(self.plots) - 1:
@@ -400,6 +423,9 @@ class GUI:
                 plot.disable()
                 plot.set_zorder(0)
             plot_i += 1
+        
+        ProjectManager.enable_auto_save()
+        return self.bars[-1]
 
     def link_plots_spikes(self):
         app = LinkCurvesSpikesDialog(self.plots, self.bars)

@@ -1,4 +1,5 @@
 import math
+import os
 from matplotlib.figure import Figure 
 from matplotlib.backends.backend_tkagg import (FigureCanvasTkAgg,  
 NavigationToolbar2Tk) 
@@ -10,6 +11,11 @@ from theme import *
 from lod_manager import *
 
 import dichotomy
+
+from SelectionRange import *
+
+from JsonComponent import JsonComponent
+
 
 CODE_NONE = 0
 CODE_ADDING_LINE = 1
@@ -51,12 +57,18 @@ PALETTE_PROPERTY_LINE_HOVERED = "hovered"
 PALETTE_PROPERTY_LINE_SELECTED = "selected"
 
 class PlotCurve:
-    def __init__(self, plot, spikes_clusters, 
-                 line_hover_precision,
+    def __init__(self, file_path, plot, spikes_clusters, 
                  color_palette,
-                 range_mode):
+                 line_hover_precision = 0.02,
+                 ranges = [],
+                 range_mode = RANGE_MODE_CLUSTERS):
         # Graph
         self.plot = plot
+        self.file_path = file_path
+
+        filename, file_extension = os.path.splitext(file_path)
+        self.name = filename.split("\\")[-1].split("/")[-1]
+        print("Curve name '", self.name, "'")
 
         # Data
         self.spikes_clusters = spikes_clusters
@@ -80,7 +92,7 @@ class PlotCurve:
         self.line_hover_precision = line_hover_precision
 
         # Ranges
-        self.ranges = []
+        self.ranges = ranges
         # Range compute
         self.range_mode = range_mode
         self.needs_recalculate_ranges = True
@@ -106,18 +118,44 @@ class PlotCurve:
 
         self.apply_color_palette()
 
+    
+    def to_json_component(self):
+        properties = {
+            "file_path": self.file_path,
+            "theme": self.color_palette.to_dict(),
+            "x_offset": self.offset,
+            "ranges": [range_.to_dict() for range_ in self.ranges]
+        }
+        return JsonComponent(self.name, properties)
+
+    @staticmethod
+    def from_json_component(component, plot):
+        file_path = component.properties.get("file_path", "")
+        color_palette = ColorPalette.from_dict(component.properties.get("theme", {}))
+
+        clusters = None
+        filename, file_extension = os.path.splitext(file_path)
+        print("File '", filename, "' is '", file_extension, "' format!")
+        if "dpt" in file_extension.lower():
+            clusters = loader.parse_DPT(file_path)
+        elif "xy" in file_extension.lower():
+            clusters = loader.parse_XY(file_path)
+
+        curve = PlotCurve(file_path, plot, clusters, color_palette)
+        curve.name = component.name
+
+        curve.offset = component.properties.get("x_offset", 0)
+        curve.ranges = [SelectionRange.from_dict(v) for v in component.properties.get("ranges", [])]
+        print("ranges to selectionRange:", curve.ranges)
+        
+        return curve
+
     def set_data(self, datax, datay):
         self.graph.set_data(datax, datay)
     def set_selection_data(self, datax, datay):
         self.graph_selections.set_data(datax, datay)
 
-
-    def set_ranges(self, ranges):
-        self.ranges = ranges
-        self.draw()
-        pass
-
-    def set_xoffset(self, offset):
+    def set_xoffset(self, offset, auto_save=True):
         # Create a transformation that moves the data vertically
         trans = transforms.Affine2D().translate(0, offset) + self.plot.transData
 
@@ -125,6 +163,9 @@ class PlotCurve:
         self.graph.set_transform(trans)
         self.graph_selections.set_transform(trans)
         self.offset = offset
+        #if auto_save:
+        #    #print("saving xoffset")
+        #    ProjectManager.set_curve_x_offset(self.name, offset)
 
     def set_zorder(self, offset):
         self.graph.set_zorder(CURVE_Z_SEPARATION * offset)
@@ -162,9 +203,10 @@ class PlotCurve:
                     return CODE_SELECTED_PLOT
                 if click_released:
                     self.dragging_plot = False
+                    self.set_xoffset(posy, True)
                 return CODE_HOVERED_PLOT
             if self.allow_dragging and self.dragging_plot and not click_released:
-                self.set_xoffset(posy)
+                self.set_xoffset(posy, False)
                 #print("dragging...")
                 return CODE_SELECTED_PLOT
         if self.hovered:
@@ -392,6 +434,7 @@ class PlotCurve:
             total_gy.extend(y)
         
         self.set_selection_data(total_gx, total_gy)
+        #ProjectManager.set_curve_ranges(self.name, self.ranges)
     
     def get_ranges(self):
         ri = 0
@@ -459,72 +502,3 @@ class PlotCurve:
             self.needs_recalculate_ranges = False
 
         self.apply_color_palette()
-
-
-
-class SelectionRange:
-    def __init__(self, start_index, start_pos, end_index, end_pos):
-        self.start_index = start_index
-        self.end_index = end_index
-        self.start_pos = start_pos
-        self.end_pos = end_pos
-        self.auto_correct()
-
-    def contains(self, index):
-        return self.start_index == index or self.end_index == index
-    def other_index(self, index):
-        if self.contains(index):
-            if index == self.start_index:
-                return self.end_index
-            else:
-                return self.start_index
-        return -1
-
-    def auto_correct(self):
-        if not self.start_pos or not self.end_pos:
-            return -1
-        if self.start_pos > self.end_pos:
-            dt_index = self.start_index
-            self.start_index = self.end_index
-            self.end_index = dt_index
-            dt_pos = self.start_pos
-            self.start_pos = self.end_pos
-            self.end_pos = dt_pos
-        return 0
-
-    def resolve(self, other_range):
-        r = self.auto_correct()
-        r2 = other_range.auto_correct()
-        if r == -1 or r2 == -1:
-            return
-        if self.start_pos < other_range.start_pos and other_range.end_pos < self.end_pos:
-            dt_index = self.end_index
-            self.end_index = other_range.end_index
-            other_range.end_index = dt_index
-            dt_pos = self.end_pos
-            self.end_pos = other_range.end_pos
-            other_range.end_pos = dt_pos
-
-            dt_index = self.end_index
-            self.end_index = other_range.start_index
-            other_range.start_index = dt_index
-            dt_pos = self.end_pos
-            self.end_pos = other_range.start_pos
-            other_range.start_pos = dt_pos
-            return
-        if self.start_pos < other_range.start_pos and other_range.start_pos < self.end_pos:
-            dt_index = other_range.start_index
-            other_range.start_index = self.end_index
-            self.end_index = dt_index
-            dt_pos = other_range.start_pos
-            other_range.start_pos = self.end_pos
-            self.end_pos = dt_pos
-            return
-        if self.start_pos < other_range.end_pos and other_range.end_pos < self.end_pos:
-            dt_index = self.start_index
-            self.start_index = other_range.end_index
-            other_range.end_index = dt_index
-            dt_pos = self.start_pos
-            self.start_pos = other_range.end_pos
-            other_range.end_pos = dt_pos
-            return
