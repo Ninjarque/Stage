@@ -14,6 +14,8 @@ class CanvasSpikes:
         self.spikes_data = spikes_data
         self.spikes_data.sort(key=lambda spike: spike.x)
 
+        self.file_path = file_path
+
         filename, file_extension = os.path.splitext(file_path)
         self.name = filename.split("\\")[-1].split("/")[-1]
         print("Curve name '", self.name, "'")
@@ -52,7 +54,7 @@ class CanvasSpikes:
         }
         return JsonComponent("CanvasSpikes", properties)
 
-    @classmethod
+    @staticmethod
     def from_json_component(component, plot):
         file_path = component.properties.get("file_path", "")
 

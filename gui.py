@@ -104,6 +104,7 @@ class GUI:
         link = Menu(edit)
         edit.add_cascade(label='Link', menu=link)
         link.add_command(label='Link curves to spikes', command=self.link_plots_spikes)
+        
 
         run = Menu(menu)
         menu.add_cascade(label='Run', menu=run)
