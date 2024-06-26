@@ -113,6 +113,8 @@ class ProjectManager:
             ProjectManager.current_project_path = ProjectManager.config.properties.get("last_project_path", "")
             if ProjectManager.current_project_path:
                 ProjectManager.load_project(ProjectManager.current_project_path, curve_plot, bars_plot)
+                return True
+        return False
 
     @staticmethod
     def auto_save():
@@ -124,10 +126,10 @@ class ProjectManager:
 
     @staticmethod
     def auto_load(curve_plot, bars_plot):
-        ProjectManager.load_config(curve_plot, bars_plot)
-        if os.path.isfile(DEFAULT_AUTOSAVE_PROJECT_PATH):
-            ProjectManager.load_project(DEFAULT_AUTOSAVE_PROJECT_PATH, curve_plot, bars_plot)
-            #print("Sucessfully auto loaded project!")
+        if not ProjectManager.load_config(curve_plot, bars_plot):
+            if os.path.isfile(DEFAULT_AUTOSAVE_PROJECT_PATH):
+                ProjectManager.load_project(DEFAULT_AUTOSAVE_PROJECT_PATH, curve_plot, bars_plot)
+                #print("Sucessfully auto loaded project!")
 
     def enable_auto_save():
         ProjectManager.do_auto_save = True

@@ -297,7 +297,7 @@ class GUI:
         ProjectManager.auto_save()
 
     def load_project_data(self):
-        print("Loading project...")
+        print("Setting project data...")
 
         self.plots.clear()
         self.bars.clear()
