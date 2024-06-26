@@ -120,11 +120,13 @@ class PlotCurve:
 
     
     def to_json_component(self):
+        for r in self.ranges:
+            print("to json range:", r.start_pos, ",", r.end_pos, "indexes:", r.start_index, ",", r.end_index, "r ptr:", r)
         properties = {
             "file_path": self.file_path,
             "theme": self.color_palette.to_dict(),
             "x_offset": self.offset,
-            "ranges": [range_.to_dict() for range_ in self.ranges]
+            "ranges": [r.to_dict() for r in self.ranges]
         }
         return JsonComponent(self.name, properties)
 
@@ -143,9 +145,18 @@ class PlotCurve:
 
         curve = PlotCurve(file_path, plot, clusters, color_palette)
         curve.name = component.name
+        curve.ranges = []
 
         curve.offset = component.properties.get("x_offset", 0)
-        curve.ranges = [SelectionRange.from_dict(v) for v in component.properties.get("ranges", [])]
+        curve.set_xoffset(curve.offset)
+        #curve.ranges = [SelectionRange.from_dict(v) for v in component.properties.get("ranges", [])]
+        ranges = [SelectionRange.from_dict(v) for v in component.properties.get("ranges", [])]
+        print("found:", len(ranges))
+
+        for r in ranges:
+            print("from json range:", r.start_pos, ",", r.end_pos)
+            curve.add_line(plot, r.start_pos, 0, False)
+            curve.add_line(plot, r.end_pos, 0, False)
         print("ranges to selectionRange:", curve.ranges)
         
         return curve
@@ -272,15 +283,18 @@ class PlotCurve:
         self.y_range = abs(limits_ymax - limits_ymin)
         return CODE_NONE
 
-    def add_line(self, axes, posx, posy):
+    def add_line(self, axes, posx, posy, try_draw=True):
         line = axes.axvline(x=posx, color=self.color_palette.get_color(PALETTE_OBJECT_LINE, PALETTE_PROPERTY_LINE_SELECTED), linestyle='--')
         line_id = self.next_line_id  # Unique identifier for the line
         self.lines[line_id] = (line_id, (posx, line))
         if self.number_lines % 2 == 1:  # Assuming ranges are formed between pairs of lines
             last_line_id, (last_xdata, last_line) = self.last_line
-            self.ranges.append(SelectionRange(last_line_id, last_xdata, line_id, posx))
+            selectionRange = SelectionRange(last_line_id, last_xdata, line_id, posx)
+            print("adding selection range:", selectionRange, "pos:", selectionRange.start_pos, ",", selectionRange.end_pos, "index:", selectionRange.start_index, ",", selectionRange.end_index)
+            self.ranges.append(selectionRange)
             self.needs_recalculate_ranges = True
-        self.draw()
+        if try_draw:
+            self.draw()
         self.last_line = (line_id, (posx, line))
         self.number_lines += 1
         self.next_line_id += 1

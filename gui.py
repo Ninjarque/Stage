@@ -70,17 +70,17 @@ class GUI:
         self.plots = []
 
         # Button to display the plot
-        self.plot_button = Button(master=self.master, command=self.toggle_curves, height=2, width=20, text="Toggle curve selection")
-        self.plot_button.pack()
+        #self.plot_button = Button(master=self.master, command=self.toggle_curves, height=2, width=20, text="Toggle curve selection")
+        #self.plot_button.pack()
 
-        self.match_button = Button(master=self.master, command=self.match_regions, height=2, width=20, text="Match selected regions")
-        self.match_button.pack()
+        #self.match_button = Button(master=self.master, command=self.match_regions, height=2, width=20, text="Match selected regions")
+        #self.match_button.pack()
 
-        self.match_spikes_button = Button(master=self.master, command=self.match_spikes, height=2, width=20, text="Match spikes given regions")
-        self.match_spikes_button.pack()
+        #self.match_spikes_button = Button(master=self.master, command=self.match_spikes, height=2, width=20, text="Match spikes given regions")
+        #self.match_spikes_button.pack()
 
-        self.run_blackbox_button = Button(master=self.master, command=self.run_blackbox, height=2, width=20, text="Run black box button")
-        self.run_blackbox_button.pack()
+        #self.run_blackbox_button = Button(master=self.master, command=self.run_blackbox, height=2, width=20, text="Run black box button")
+        #self.run_blackbox_button.pack()
 
         # Menu
         menu = Menu(master)
@@ -93,11 +93,27 @@ class GUI:
         filemenu.add_command(label='Open curve', command=self.open_curve)
         filemenu.add_command(label='Open spikes', command=self.open_spikes)
         filemenu.add_separator()
-        filemenu.add_command(label='Link graphs', command=self.link_plots_spikes)
-        filemenu.add_separator()
         filemenu.add_command(label='Save project', command=self.save_project)
         filemenu.add_separator()
         filemenu.add_command(label='Exit', command=master.quit)
+
+        edit = Menu(menu)
+        menu.add_cascade(label='Edit', menu=edit)
+        edit.add_command(label='Toggle curve selection', command=self.toggle_curves)
+        edit.add_separator()
+        link = Menu(edit)
+        edit.add_cascade(label='Link', menu=link)
+        link.add_command(label='Link curves to spikes', command=self.link_plots_spikes)
+
+        run = Menu(menu)
+        menu.add_cascade(label='Run', menu=run)
+        matchs = Menu(run)
+        run.add_cascade(label='Matching', menu=matchs)
+        matchs.add_command(label='Match regions', command=self.match_regions)
+        matchs.add_command(label='Match spikes', command=self.match_spikes)
+        run.add_separator()
+        run.add_command(label='Blackbox', command=self.run_blackbox)
+
         helpmenu = Menu(menu)
         menu.add_cascade(label='Help', menu=helpmenu)
         helpmenu.add_command(label='About')
@@ -229,6 +245,7 @@ class GUI:
 
     def run_blackbox(self):
         print("Saving every changes to files...")
+        self.save_project()
 
         if len(self.plots) > 1 and len(self.bars) > 1:
             target_plot_index = 1
@@ -307,6 +324,24 @@ class GUI:
 
         self.plots = project.curves
         self.bars = project.spikes
+
+        plot_i = 0
+        for plot in self.plots:
+            if plot_i == len(self.plots) - 1:
+                plot.enable()
+                plot.set_zorder(1)
+            else:
+                plot.disable()
+                plot.set_zorder(0)
+            plot_i += 1
+
+        plot_i = 0
+        for bar in self.bars:
+            if self.plots[plot_i].enabled:
+                bar.enable()
+            else:
+                bar.disable()
+            plot_i += 1
 
         '''
 
@@ -415,13 +450,11 @@ class GUI:
         CanvasSpikes(file_path, self.bars_plot, bars, xdata, theme)
         )
         plot_i = 0
-        for plot in self.plots:
-            if plot_i == len(self.plots) - 1:
-                plot.enable()
-                plot.set_zorder(1)
+        for bar in self.bars:
+            if self.plots[plot_i].enabled:
+                bar.enable()
             else:
-                plot.disable()
-                plot.set_zorder(0)
+                bar.disable()
             plot_i += 1
         
         ProjectManager.enable_auto_save()

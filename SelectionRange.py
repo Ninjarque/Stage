@@ -80,6 +80,6 @@ class SelectionRange:
         r = cls(0, 0, 0, 0)
         r.start_index = int(data.get("start_index", 0))
         r.end_index = int(data.get("end_index", -1))
-        r.start_pos = int(data.get("start_pos", 0))
-        r.end_pos = int(data.get("end_pos", 0))
+        r.start_pos = float(data.get("start_pos", 0))
+        r.end_pos = float(data.get("end_pos", 0))
         return r
