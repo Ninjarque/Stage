@@ -73,6 +73,11 @@ class CanvasSpikes:
         color_palette = ColorPalette.from_dict(component.properties.get("theme", {}))
         return CanvasSpikes(file_path, plot, bars, xdata, color_palette)
 
+    def get_file_path(self):
+        return self.file_path
+
+    def update_file_path(self, new_path):
+        self.file_path = new_path
 
     def create_spikes(self, x_data):
         self.clear_spikes()  # Clear existing spikes first

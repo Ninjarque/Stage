@@ -52,15 +52,13 @@ class ProjectManager:
             print("No project to save")
             return
         ProjectManager.current_project_path = path
-        json_component = ProjectManager.current_project.to_json_component()
-        json_component.save(path)
+        ProjectManager.current_project.save(path, pack_files=False)
         ProjectManager.make_backup()
 
     @staticmethod
     def load_project(path, curve_plot, bars_plot):
+        ProjectManager.current_project = Project.load(path, curve_plot, bars_plot)
         ProjectManager.current_project_path = path
-        json_component = JsonComponent.load(path)
-        ProjectManager.current_project = Project.from_json_component(json_component, curve_plot, bars_plot)
 
     @staticmethod
     def make_backup():
@@ -72,14 +70,16 @@ class ProjectManager:
         backup_dir = os.path.join(BACKUP_DIR, f"{project_name}_{timestamp}")
         os.makedirs(backup_dir, exist_ok=True)
 
-        backup = project.to_json_component().to_dict()
-        ProjectManager._copy_files_and_update_paths(backup, backup_dir)
-        
+        project.relocate(backup_dir)
+        backup_file_path = os.path.join(backup_dir, f"{project_name}{CONFIG_EXTENSION}")
+        project.save(backup_file_path, pack_files=True)
+
         config = ProjectManager._load_or_create_config()
-        backup_entry = {"timestamp": timestamp, "backup": backup}
+        backup_entry = {"timestamp": timestamp, "backup_path": backup_file_path}
         config.properties.setdefault(BACKUP_KEY, []).append(backup_entry)
-        config.save(ProjectManager.current_project_path)
-        print(f"Created backup for project '{project.name}' at '{timestamp}'")
+        config.save(APPLICATION_CONFIG_PATH)
+        print(f"Created backup for project '{project.name}' at '{backup_file_path}'")
+
 
     @staticmethod
     def _copy_files_and_update_paths(data, backup_dir):

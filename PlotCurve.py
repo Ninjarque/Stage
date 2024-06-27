@@ -160,6 +160,12 @@ class PlotCurve:
         print("ranges to selectionRange:", curve.ranges)
         
         return curve
+    
+    def get_file_path(self):
+        return self.file_path
+
+    def update_file_path(self, new_path):
+        self.file_path = new_path
 
     def set_data(self, datax, datay):
         self.graph.set_data(datax, datay)
