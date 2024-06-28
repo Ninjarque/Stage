@@ -246,7 +246,12 @@ class GUI:
 
     def run_blackbox(self):
         print("Saving every changes to files...")
-        self.save_project()
+
+        try:
+            self.save_project()
+        except:
+            print("Error saving project")
+            pass
 
         if len(self.plots) > 1 and len(self.bars) > 1:
             target_plot_index = 1
@@ -269,9 +274,9 @@ class GUI:
         print("Starting to run the black box...")
 
         try:
-            subprocess.call(["./job_xfit_nu3"])
-            subprocess.call(["./job_cal_nu3"])
-            subprocess.call(["./job_sim_nu3"])
+            subprocess.call(["../Exemple_1/job_xfit_nu3"])
+            subprocess.call(["../Exemple_1/job_cal_nu3"])
+            subprocess.call(["../Exemple_1/job_sim_nu3"])
             print("Ran every black box command!")
         except:
             print("Couldn't run the commands, try verifying that the required files are in the correct path and that you are using Mac or Linux!")
