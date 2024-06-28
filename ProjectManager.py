@@ -10,7 +10,7 @@ from Project import *
 
 CONFIG_EXTENSION = ".json"
 
-DEFAULT_AUTOSAVE_PROJECT_PATH = "auto_saved_project.json"
+DEFAULT_AUTOSAVE_PROJECT_PATH = "./"
 DEFAULT_CONFIG_AUTO_SAVE_NAME = "autosaved_project"
 
 APPLICATION_CONFIG_PATH = "config.json"
@@ -51,9 +51,8 @@ class ProjectManager:
         if not ProjectManager.current_project:
             print("No project to save")
             return
-        ProjectManager.current_project_path = path
-        ProjectManager.current_project.save(path, pack_files=False)
-        ProjectManager.make_backup()
+        ProjectManager.current_project_path = ProjectManager.current_project.save(path, pack_files=False)
+        #ProjectManager.make_backup()
 
     @staticmethod
     def load_project(path, curve_plot, bars_plot):
