@@ -4,11 +4,12 @@ from tkinter import ttk
 from PlotCurve import PALETTE_OBJECT_GRAPH, PALETTE_OBJECT_BAR, PALETTE_PROPERTY_PLOT_ENABLED
 
 class LinkCurvesSpikesDialog:
-    def __init__(self, curves, curve_names, spikes, spike_names):
-        self.curves = curves
-        self.curve_names = curve_names
-        self.spikes = spikes
-        self.spike_names = spike_names
+    def __init__(self, project):
+        self.project = project
+        self.curves = project.curves
+        self.curve_names = [curve.name for curve in self.curves]
+        self.spikes = project.spikes
+        self.spike_names = [spike.name for spike in self.spikes]
 
         self.window = tk.Tk()
         self.window.title("Link Curves to Spikes")
@@ -40,20 +41,20 @@ class LinkCurvesSpikesDialog:
         selected_curve_name = self.curve_combobox.get()
         index = self.curve_names.index(selected_curve_name)
         curve = self.curves[index]
-        self.curve_combobox.config(foreground=curve.theme.get_color(PALETTE_OBJECT_GRAPH, PALETTE_PROPERTY_PLOT_ENABLED))
+        self.curve_combobox.config(foreground=curve.color_palette.get_color(PALETTE_OBJECT_GRAPH, PALETTE_PROPERTY_PLOT_ENABLED))
 
     def update_spikes_color(self, event):
         selected_spikes_name = self.spike_combobox.get()
         index = self.spike_names.index(selected_spikes_name)
         spikes = self.spikes[index]
-        self.spike_combobox.config(foreground=spikes.theme.get_color(PALETTE_OBJECT_BAR, PALETTE_PROPERTY_PLOT_ENABLED))
+        self.spike_combobox.config(foreground=spikes.color_palette.get_color(PALETTE_OBJECT_BAR, PALETTE_PROPERTY_PLOT_ENABLED))
 
     def link(self):
         selected_curve = self.curve_combobox.get()
         selected_spike = self.spike_combobox.get()
         print(f"Linked {selected_curve} to {selected_spike}")
-        # Perform the actual linking logic here
-        self.window.destroy()
+        self.project.curve_to_spikes_links[selected_curve] = selected_spike
+        #self.window.destroy()
 
     def run(self):
         self.window.mainloop()

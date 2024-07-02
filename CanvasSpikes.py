@@ -55,7 +55,7 @@ class CanvasSpikes:
             "file_path": self.file_path,
             "theme": self.color_palette.to_dict()
         }
-        return JsonComponent("CanvasSpikes", properties)
+        return JsonComponent(self.name, properties)
 
     @staticmethod
     def from_json_component(component, plot):
@@ -74,7 +74,10 @@ class CanvasSpikes:
 
 
         color_palette = ColorPalette.from_dict(component.properties.get("theme", {}))
-        return CanvasSpikes(file_path, plot, bars, xdata, color_palette)
+        spikes =  CanvasSpikes(file_path, plot, bars, xdata, color_palette)
+        spikes.name = component.name
+
+        return spikes
 
     def get_file_path(self):
         return self.file_path

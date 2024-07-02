@@ -120,8 +120,6 @@ class PlotCurve:
 
     
     def to_json_component(self):
-        for r in self.ranges:
-            print("to json range:", r.start_pos, ",", r.end_pos, "indexes:", r.start_index, ",", r.end_index, "r ptr:", r)
         properties = {
             "file_path": self.file_path,
             "theme": self.color_palette.to_dict(),
@@ -151,14 +149,11 @@ class PlotCurve:
         curve.set_xoffset(curve.offset)
         #curve.ranges = [SelectionRange.from_dict(v) for v in component.properties.get("ranges", [])]
         ranges = [SelectionRange.from_dict(v) for v in component.properties.get("ranges", [])]
-        print("found:", len(ranges))
-
+        
         for r in ranges:
-            print("from json range:", r.start_pos, ",", r.end_pos)
             curve.add_line(plot, r.start_pos, 0, False)
             curve.add_line(plot, r.end_pos, 0, False)
-        print("ranges to selectionRange:", curve.ranges)
-        
+
         return curve
     
     def get_file_path(self):

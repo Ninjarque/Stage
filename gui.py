@@ -11,6 +11,7 @@ import subprocess
 MAINTAIN THOSE IMPORTS UP TO DATE
 '''
 from LinkCurvesSpikesDialog import *
+from MatchParametersDialog import *
 
 import MatchCandidatesGenerator
 from FeatureExtractor import *
@@ -172,33 +173,55 @@ class GUI:
         pass
 
     def match_regions(self):
-        if len(self.plots) > 1:
-            target_plot_index = 1
-            current_plot_index = 0
-            
-            target_plot = self.plots[target_plot_index]
-            current_plot = self.plots[current_plot_index]
+        if len(self.plots) <= 1:
+            print("Not enough curves loaded for matching, requieres (2) at least!")
+            return
+        
+        app = MatchParametersDialog(ProjectManager.current_project)
+        app.run()
+        if not app.validated:
+            print("Cancelled matching...")
+            return
+        curve_names = [curve.name for curve in ProjectManager.current_project.curves]
 
-            target_rangex, target_rangey, target_clusters = target_plot.get_ranges()
-            current_rangex, current_rangey, current_clusters = current_plot.get_ranges()
-            if not target_clusters or not current_clusters:
-                print("no target_clusters/current_clusters")
-                return
-            target_cluster = SpikeCluster.merge(target_clusters)
-            target_cluster, new_start_target, new_end_target = SpikeCluster.truncate(target_cluster, 0.2, 0.15)
+        target_plot_index = 1
+        current_plot_index = 0
+        
 
-            current_clusters = SpikeCluster.merge(current_clusters)
+        if ProjectManager.current_project.target_curve != "" and ProjectManager.current_project.target_curve in curve_names:
+            target_plot_index = curve_names.index(ProjectManager.current_project.target_curve)
+        else:
+            print("Didn't have a proper target curve, exiting match operation...")
+            return
+        if ProjectManager.current_project.current_curve != "" and ProjectManager.current_project.current_curve in curve_names:
+            current_plot_index = curve_names.index(ProjectManager.current_project.current_curve)
+        else:
+            print("Didn't have a proper current curve, exiting match operation...")
+            return
 
-            matchRandom = MatchingStep(RandomFeatureExtractor(100, 200), 1.0, 1.0)#0.5, 1.0, 0.5)
-            matchDistance = MatchingStep(DistanceFeatureExtractor([0.66, 0.75, 1.0, 1.25, 1.5, 1.66, 1.75], 1.0, 10.0), 0.5, 1.0)
-            matchShape = MatchingStep(ShapeFeatureExtractor([0.5, 0.75, 1.0, 1.5, 1.75]), 0.5, 1.0)
-            matcher = Matcher(matchDistance)#matchingStep1)#, matchingStep2)
-            target_start, target_end, x_start, x_end, target_tree, current_tree = matcher.match(target_cluster, current_clusters, 1)#3)
-            
-            #target_plot.set_ranges([(target_cluster.spikesX[target_start], target_cluster.spikesX[target_end])])
-            target_plot.set_ranges([(target_start, target_end)])
-            print("selecting range in current plot of", x_start, ":", x_end)
-            current_plot.set_ranges([(x_start, x_end)])
+        target_plot = self.plots[target_plot_index]
+        current_plot = self.plots[current_plot_index]
+
+        target_rangex, target_rangey, target_clusters = target_plot.get_ranges()
+        current_rangex, current_rangey, current_clusters = current_plot.get_ranges()
+        if not target_clusters or not current_clusters:
+            print("no target_clusters/current_clusters")
+            return
+        target_cluster = SpikeCluster.merge(target_clusters)
+        target_cluster, new_start_target, new_end_target = SpikeCluster.truncate(target_cluster, 0.2, 0.15)
+
+        current_clusters = SpikeCluster.merge(current_clusters)
+
+        matchRandom = MatchingStep(RandomFeatureExtractor(100, 200), 1.0, 1.0)#0.5, 1.0, 0.5)
+        matchDistance = MatchingStep(DistanceFeatureExtractor([0.66, 0.75, 1.0, 1.25, 1.5, 1.66, 1.75], 1.0, 10.0), 0.5, 1.0)
+        matchShape = MatchingStep(ShapeFeatureExtractor([0.5, 0.75, 1.0, 1.5, 1.75]), 0.5, 1.0)
+        matcher = Matcher(matchDistance)#matchingStep1)#, matchingStep2)
+        target_start, target_end, x_start, x_end, target_tree, current_tree = matcher.match(target_cluster, current_clusters, 1)#3)
+        
+        #target_plot.set_ranges([(target_cluster.spikesX[target_start], target_cluster.spikesX[target_end])])
+        target_plot.set_ranges([(target_start, target_end)])
+        print("selecting range in current plot of", x_start, ":", x_end)
+        current_plot.set_ranges([(x_start, x_end)])
             
         #filterTree = FilterTree.build()
         self.canvas.draw()
@@ -338,6 +361,10 @@ class GUI:
         # Clear the canvas
         #self.graphs_plot.clear()
         #self.bars_plot.clear()
+
+        #plt.clf()
+        #self.graphs_plot.cla()
+        #self.bars_plot.cla()
 
 
         window.title(ProjectManager.current_project.name)
@@ -484,7 +511,7 @@ class GUI:
         return self.bars[-1]
 
     def link_plots_spikes(self):
-        app = LinkCurvesSpikesDialog(self.plots, self.bars)
+        app = LinkCurvesSpikesDialog(ProjectManager.current_project)
         app.run()
 
 
