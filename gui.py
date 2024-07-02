@@ -88,12 +88,11 @@ class GUI:
         filemenu = Menu(menu)
         menu.add_cascade(label='File', menu=filemenu)
         filemenu.add_command(label='New project', command=self.new_project)
+        filemenu.add_command(label='Open project', command=self.load_project)
+        filemenu.add_command(label='Save project', command=self.save_project)
         filemenu.add_separator()
-        filemenu.add_command(label='Open project', command=self.open_project)
         filemenu.add_command(label='Open curve', command=self.open_curve)
         filemenu.add_command(label='Open spikes', command=self.open_spikes)
-        filemenu.add_separator()
-        filemenu.add_command(label='Save project', command=self.save_project)
         filemenu.add_separator()
         filemenu.add_command(label='Exit', command=master.quit)
 
@@ -317,13 +316,29 @@ class GUI:
         ProjectManager.auto_save()
 
     def save_project(self):
-        ProjectManager.auto_save()
+        #ProjectManager.auto_save()
+
+        ProjectManager.save_project_dialog()
+
+    def load_project(self):
+        ProjectManager.load_project_dialog(self.graphs_plot, self.bars_plot)
+        self.load_project_data()
 
     def load_project_data(self):
         print("Setting project data...")
 
+        for curve in self.plots:
+            curve.clear()
+        for bar in self.bars:
+            bar.clear()
+
         self.plots.clear()
         self.bars.clear()
+
+        # Clear the canvas
+        #self.graphs_plot.clear()
+        #self.bars_plot.clear()
+
 
         window.title(ProjectManager.current_project.name)
         project = ProjectManager.current_project
@@ -348,6 +363,8 @@ class GUI:
             else:
                 bar.disable()
             plot_i += 1
+
+        self.canvas.draw()
 
         '''
 

@@ -184,6 +184,13 @@ class PlotCurve:
         #    #print("saving xoffset")
         #    ProjectManager.set_curve_x_offset(self.name, offset)
 
+    def clear(self):
+        pass
+        # Remove this plot from the graph
+        # self.graph.clear()
+        # self.graph_selections.clear()
+        #self.plot.remove()  # Adjust this according to your implementation
+
     def set_zorder(self, offset):
         self.graph.set_zorder(CURVE_Z_SEPARATION * offset)
         self.graph_selections.set_zorder(5 + CURVE_Z_SEPARATION * offset)

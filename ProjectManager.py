@@ -51,13 +51,17 @@ class ProjectManager:
         if not ProjectManager.current_project:
             print("No project to save")
             return
-        ProjectManager.current_project_path = ProjectManager.current_project.save(path, pack_files=False)
+        ProjectManager.current_project.name = path.split("/")[-1].split('.')[0]
+        file_path = os.path.dirname(path).replace("\\", "/")
+        ProjectManager.current_project_path = ProjectManager.current_project.save(file_path, pack_files=True)
         #ProjectManager.make_backup()
+        ProjectManager.save_config()
 
     @staticmethod
     def load_project(path, curve_plot, bars_plot):
         ProjectManager.current_project = Project.load(path, curve_plot, bars_plot)
         ProjectManager.current_project_path = path
+        ProjectManager.save_config()
 
     @staticmethod
     def make_backup():
@@ -121,7 +125,6 @@ class ProjectManager:
             print("Auto save disabled...")
             return
         ProjectManager.save_project(DEFAULT_AUTOSAVE_PROJECT_PATH)
-        ProjectManager.save_config()
 
     @staticmethod
     def auto_load(curve_plot, bars_plot):

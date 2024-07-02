@@ -47,6 +47,9 @@ class CanvasSpikes:
 
         self.create_spikes(dx)
 
+    def clear(self):
+        self.clear_spikes()
+
     def to_json_component(self):
         properties = {
             "file_path": self.file_path,
