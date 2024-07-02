@@ -24,11 +24,12 @@ class Project:
         self.version = PROJECT_VERSION
         self.packed = False
 
-        self.curves = []  # List to store PlotCurve instances
-        
+        self.curves = []
         self.spikes = []
 
         self.curve_to_spikes_links = {}
+        self.target_curve = ""
+        self.current_curve = ""
 
         self.backup_identifier = ""
 
@@ -39,6 +40,8 @@ class Project:
             "curves": [curve.to_json_component().to_dict() for curve in self.curves],
             "spikes": [spike.to_json_component().to_dict() for spike in self.spikes],
             "curve_to_spikes_links": self.curve_to_spikes_links,
+            "target_curve": self.target_curve,
+            "current_curve": self.current_curve,
             "backup_identifier": self.backup_identifier
         }
         return JsonComponent(self.name, properties)
@@ -54,6 +57,10 @@ class Project:
         project.spikes = [CanvasSpikes.from_json_component(JsonComponent.from_dict(c), bars_plot) for c in component.properties.get("spikes", [])]
         #print([[x.x for x in spike.spikes_data] for spike in project.spikes])
         project.curve_to_spikes_links = component.properties.get("curve_to_spikes_links", {})
+
+        project.target_curve = component.properties.get("target_curve", "")
+        project.current_curve = component.properties.get("current_curve", "")
+
         project.backup_identifier = component.properties.get("backup_identifier", "")
         return project
 
@@ -100,12 +107,24 @@ class Project:
         if pack_files:
             bi = 0
             for curve in self.curves:
-                compiled = SpikeCluster.merge(curve.spikes_clusters)
-                saver.write_XY(("./curve{}.xy").format(bi), compiled.spikesX, compiled.spikesY)
-                curve.update_file_path(("./curve{}.xy").format(bi))
+                if os.path.exists(curve.file_path):
+                    ext = curve.file_path.split(".")[-1]
+                    future_path = ("./curve{}.{}").format(bi, ext)
+                    if os.path.exists(future_path):
+                        bi += 1
+                        continue
+                    shutil.copyfile(curve.file_path, future_path)
+                    curve.update_file_path(future_path)
+                    print("Copied", curve.file_path, "to the archive")
+                else:
+                    compiled = SpikeCluster.merge(curve.spikes_clusters)
+                    saver.write_XY(("./curve{}.xy").format(bi), compiled.spikesX, compiled.spikesY)
+                    curve.update_file_path(("./curve{}.xy").format(bi))
+                    print("Couldn't find the", curve.file_path, "file, so compiled the curveto the archive")
                 bi += 1
             bi = 0
             for bars in self.spikes:
+                #we can't just copy over the file here because the spikes are a changing part in the files
                 saver.write_ASG(("./spike{}.asg").format(bi), bars.spikes_data)
                 bars.update_file_path(("./spike{}.asg").format(bi))
                 bi += 1
