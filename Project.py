@@ -47,14 +47,14 @@ class Project:
         return JsonComponent(self.name, properties)
 
     @classmethod
-    def from_json_component(cls, component, curve_plot, bars_plot):
+    def from_json_component(cls, component, curve_plot, bars_plot, current_directory):
         project = cls()
         project.name = component.name
         project.version = component.properties.get("version", PROJECT_VERSION)
         project.packed = component.properties.get("packed", False)
         #Could change computing based off the version
-        project.curves = [PlotCurve.from_json_component(JsonComponent.from_dict(c), curve_plot) for c in component.properties.get("curves", [])]
-        project.spikes = [CanvasSpikes.from_json_component(JsonComponent.from_dict(c), bars_plot) for c in component.properties.get("spikes", [])]
+        project.curves = [PlotCurve.from_json_component(JsonComponent.from_dict(c), curve_plot, current_directory) for c in component.properties.get("curves", [])]
+        project.spikes = [CanvasSpikes.from_json_component(JsonComponent.from_dict(c), bars_plot, current_directory) for c in component.properties.get("spikes", [])]
         #print([[x.x for x in spike.spikes_data] for spike in project.spikes])
         project.curve_to_spikes_links = component.properties.get("curve_to_spikes_links", {})
 
@@ -74,7 +74,7 @@ class Project:
                 b = os.path.abspath(new_path)
                 if a == b:
                     continue
-                shutil.copy(curve_file, new_path)
+                #shutil.copy(curve_file, new_path)
                 curve.update_file_path(os.path.relpath(new_path, new_dir))
 
         for spike in self.spikes:
@@ -85,7 +85,7 @@ class Project:
                 b = os.path.abspath(new_path)
                 if a == b:
                     continue
-                shutil.copy(spike_file, new_path)
+                #shutil.copy(spike_file, new_path)
                 spike.update_file_path(os.path.relpath(new_path, new_dir))
 
         self.backup_identifier = os.path.relpath(new_dir, os.path.dirname(self.name))
@@ -104,6 +104,7 @@ class Project:
         FileManager.write(file_path, target_file_name, data)
 
     def save(self, file_path, pack_files):
+        '''
         if pack_files:
             bi = 0
             for curve in self.curves:
@@ -128,6 +129,7 @@ class Project:
                 saver.write_ASG(("./spike{}.asg").format(bi), bars.spikes_data)
                 bars.update_file_path(("./spike{}.asg").format(bi))
                 bi += 1
+        '''
         self.pack(file_path, self.name, pack_files)
         return os.path.join(file_path, self.name + FileManager.DEFAULT_PROJECT_EXTENSION)
 
@@ -141,8 +143,9 @@ class Project:
         if not js_files:
             return None
         project_path = js_files[0]
+        print("Project to load path:", project_path)
         p = JsonComponent.load(project_path)
-        return Project.from_json_component(p, curve_plot, bars_plot)
+        return Project.from_json_component(p, curve_plot, bars_plot, unpacked_file)
 
     def get_file(self, target_file_name):
         return FileManager.read(self.name, target_file_name)

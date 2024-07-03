@@ -58,8 +58,9 @@ class CanvasSpikes:
         return JsonComponent(self.name, properties)
 
     @staticmethod
-    def from_json_component(component, plot):
+    def from_json_component(component, plot, current_directory):
         file_path = component.properties.get("file_path", "")
+        file_path = os.path.join(current_directory, file_path)
 
         bars = None
         xdata = None

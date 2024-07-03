@@ -270,10 +270,17 @@ class GUI:
         print("Saving every changes to files...")
 
         try:
-            self.save_project()
+            saved = self.save_project()
+            if not saved:
+                print("Cancelled the saving of project modifications!")
+            else:
+                print("Done saving project!")
         except:
             print("Error saving project")
             pass
+
+
+        print("Compiling changes to files...")
 
         if len(self.plots) > 1 and len(self.bars) > 1:
             target_plot_index = 1
@@ -288,16 +295,19 @@ class GUI:
             target_compiled = SpikeCluster.compile(target_plot.spikes_clusters, target_bars.spikes_data)
             current_compiled = SpikeCluster.compile(current_plot.spikes_clusters, current_bars.spikes_data)
 
-            saver.write_XY("./result_current.xy", current_compiled.spikesX, current_compiled.spikesY)
-            saver.write_ASG("./result_current.asg", current_compiled.bars)
+            saver.write_XY("./spectr.xy", current_compiled.spikesX, current_compiled.spikesY)
+            saver.write_ASG("./spikes.t", current_compiled.bars)
 
-        print("Done saving changes!")
+        print("Done compiling changes!")
         
         print("Starting to run the black box...")
 
         try:
+            print("######## job_xfit_nu3 ########")
             subprocess.call(["../Exemple_1/job_xfit_nu3"])
+            print("######## job_cal_nu3 ########")
             subprocess.call(["../Exemple_1/job_cal_nu3"])
+            print("######## job_sim_nu3 ########")
             subprocess.call(["../Exemple_1/job_sim_nu3"])
             print("Ran every black box command!")
         except:

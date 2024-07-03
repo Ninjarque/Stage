@@ -142,8 +142,7 @@ def parse_ASG(filename):
             vA = float(values[3])
             vB = float(values[4])
             vC = float(values[5])
-            if lineLen >= 13:
-                id = values[6:]
+            id = values[6:]
         
         #print("Line{}:   \ti({}), at x = {}, vA = {}, vB = {}, vC = {}, id = {}".format(count, i, x, vA, vB, vC, id))
         bars.append(Bar(i, x, 1.0, id))
