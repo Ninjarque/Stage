@@ -37,6 +37,8 @@ class ProjectManager:
         file_path = filedialog.asksaveasfilename()
         if file_path:
             ProjectManager.save_project(file_path)
+            return True
+        return False
 
     @staticmethod
     def load_project_dialog(curve_plot, bars_plot):
@@ -59,6 +61,9 @@ class ProjectManager:
 
     @staticmethod
     def load_project(path, curve_plot, bars_plot):
+        if not os.path.exists(path):
+            print("Couldn't find project to auto load at path:", path)
+            return
         ProjectManager.current_project = Project.load(path, curve_plot, bars_plot)
         ProjectManager.current_project_path = path
         ProjectManager.save_config()

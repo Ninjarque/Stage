@@ -4,6 +4,8 @@ import tempfile
 import zipfile
 from JsonComponent import JsonComponent
 
+import saver
+
 
 class FileManager:
     DEFAULT_PROJECT_EXTENSION = ".proj"
@@ -38,7 +40,10 @@ class FileManager:
             for curve in project.curves:
                 shutil.copy(curve.file_path, os.path.join(tmp_archive_dir, os.path.basename(curve.file_path)))
             for bars in project.spikes:
-                shutil.copy(bars.file_path, os.path.join(tmp_archive_dir, os.path.basename(bars.file_path)))
+                bars_path = os.path.join(tmp_archive_dir, os.path.basename(bars.file_path).split('.')[0] + '.asg')
+                bars.file_path = bars.file_path.split('.')[0] + '.asg'
+                saver.write_ASG(bars_path, bars.spikes_data)
+                #shutil.copy(bars.file_path, os.path.join(tmp_archive_dir, os.path.basename(bars.file_path)))
             project.relocate(file_path)
         
         # Save project JSON

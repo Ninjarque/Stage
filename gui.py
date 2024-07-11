@@ -5,7 +5,8 @@ from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import (FigureCanvasTkAgg,  
 NavigationToolbar2Tk)
 from matplotlib.gridspec import GridSpec
-import subprocess
+
+from BlackboxManager import *
 
 '''
 MAINTAIN THOSE IMPORTS UP TO DATE
@@ -216,7 +217,7 @@ class GUI:
         matchDistance = MatchingStep(DistanceFeatureExtractor([0.66, 0.75, 1.0, 1.25, 1.5, 1.66, 1.75], 1.0, 10.0), 0.5, 1.0)
         matchShape = MatchingStep(ShapeFeatureExtractor([0.5, 0.75, 1.0, 1.5, 1.75]), 0.5, 1.0)
         matcher = Matcher(matchDistance)#matchingStep1)#, matchingStep2)
-        target_start, target_end, x_start, x_end, target_tree, current_tree = matcher.match(target_cluster, current_clusters, 1)#3)
+        target_start, target_end, x_start, x_end, target_tree, current_tree = matcher.match(target_cluster, current_clusters, 3)#3)
         
         #target_plot.set_ranges([(target_cluster.spikesX[target_start], target_cluster.spikesX[target_end])])
         target_plot.set_ranges([(target_start, target_end)])
@@ -228,8 +229,22 @@ class GUI:
         pass
     def match_spikes(self):
         if len(self.plots) > 1 and len(self.bars) > 1:
+            curve_names = [curve.name for curve in ProjectManager.current_project.curves]
+
             target_plot_index = 1
             current_plot_index = 0
+            
+
+            if ProjectManager.current_project.target_curve != "" and ProjectManager.current_project.target_curve in curve_names:
+                target_plot_index = curve_names.index(ProjectManager.current_project.target_curve)
+            else:
+                print("Didn't have a proper target curve, exiting match operation...")
+                return
+            if ProjectManager.current_project.current_curve != "" and ProjectManager.current_project.current_curve in curve_names:
+                current_plot_index = curve_names.index(ProjectManager.current_project.current_curve)
+            else:
+                print("Didn't have a proper current curve, exiting match operation...")
+                return
             
             target_plot = self.plots[target_plot_index]
             current_plot = self.plots[current_plot_index]
@@ -283,8 +298,22 @@ class GUI:
         print("Compiling changes to files...")
 
         if len(self.plots) > 1 and len(self.bars) > 1:
+            curve_names = [curve.name for curve in ProjectManager.current_project.curves]
+
             target_plot_index = 1
             current_plot_index = 0
+            
+
+            if ProjectManager.current_project.target_curve != "" and ProjectManager.current_project.target_curve in curve_names:
+                target_plot_index = curve_names.index(ProjectManager.current_project.target_curve)
+            else:
+                print("Didn't have a proper target curve, exiting match operation...")
+                return
+            if ProjectManager.current_project.current_curve != "" and ProjectManager.current_project.current_curve in curve_names:
+                current_plot_index = curve_names.index(ProjectManager.current_project.current_curve)
+            else:
+                print("Didn't have a proper current curve, exiting match operation...")
+                return
             
             target_plot = self.plots[target_plot_index]
             current_plot = self.plots[current_plot_index]
@@ -292,26 +321,17 @@ class GUI:
             target_bars = self.bars[target_plot_index]
             current_bars = self.bars[current_plot_index]
 
-            target_compiled = SpikeCluster.compile(target_plot.spikes_clusters, target_bars.spikes_data)
-            current_compiled = SpikeCluster.compile(current_plot.spikes_clusters, current_bars.spikes_data)
+            #target_compiled = SpikeCluster.compile(target_plot.spikes_clusters, target_bars.spikes_data)
+            #current_compiled = SpikeCluster.compile(current_plot.spikes_clusters, current_bars.spikes_data)
 
-            saver.write_XY("./spectr.xy", current_compiled.spikesX, current_compiled.spikesY)
-            saver.write_ASG("./spikes.t", current_compiled.bars)
+            saver.write_XY("./new_curve.xy", current_plot.full_datax, current_plot.full_datay)
+            saver.write_ASG("./new_spike.asg", current_bars.spikes_data)
 
         print("Done compiling changes!")
         
         print("Starting to run the black box...")
 
-        try:
-            print("######## job_xfit_nu3 ########")
-            subprocess.call(["../Exemple_1/job_xfit_nu3"])
-            print("######## job_cal_nu3 ########")
-            subprocess.call(["../Exemple_1/job_cal_nu3"])
-            print("######## job_sim_nu3 ########")
-            subprocess.call(["../Exemple_1/job_sim_nu3"])
-            print("Ran every black box command!")
-        except:
-            print("Couldn't run the commands, try verifying that the required files are in the correct path and that you are using Mac or Linux!")
+        BlackboxManager.run()
 
         print("Done running the black box!")
         pass
@@ -351,7 +371,10 @@ class GUI:
     def save_project(self):
         #ProjectManager.auto_save()
 
-        ProjectManager.save_project_dialog()
+        saved = ProjectManager.save_project_dialog()
+        if saved:
+            print("Saved", ProjectManager.current_project.name, "successfully!")
+        return saved
 
     def load_project(self):
         ProjectManager.load_project_dialog(self.graphs_plot, self.bars_plot)

@@ -6,7 +6,7 @@ from CurveUtils import *
 
 import MatchCandidatesGenerator
 
-TRUNCATE_PERCENTAGE_PER_ITERATION = 0.2
+TRUNCATE_PERCENTAGE_PER_ITERATION = 0.05 #0.2
 
 class MatchingStep:
     def __init__(self, featureExtractor, stepSlidingPrecision, stepRangePrecision):
@@ -44,6 +44,7 @@ class Matcher:
             target_avg_chunk = CurveUtils.average_cluster(target_chunk, target_window)
             current_avg_chunk = CurveUtils.average_cluster(current_chunk, current_window)
 
+            '''
             plt.suptitle('Averaged vs normal target at reccursion {}/{}, with window:{} given average ratio of {}'.format(r, reccursions - 1, target_window, average_ratio))
             plt.plot(target_chunk.spikesX, target_chunk.spikesY, 'r-')
             plt.plot(target_avg_chunk.spikesX, target_avg_chunk.spikesY, 'b-')
@@ -53,6 +54,7 @@ class Matcher:
             plt.plot(current_chunk.spikesX, current_chunk.spikesY, 'r-')
             plt.plot(current_avg_chunk.spikesX, current_avg_chunk.spikesY, 'b-')
             plt.show()
+            '''
 
             target_start, target_end, x_start, x_end, match_dist = self.match_chunk(target_avg_chunk, current_avg_chunk)
             

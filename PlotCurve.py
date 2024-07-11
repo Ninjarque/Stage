@@ -74,6 +74,8 @@ class PlotCurve:
         self.spikes_clusters = spikes_clusters
 
         datax, datay = loader.graph_DPT(spikes_clusters)
+        self.full_datax = datax
+        self.full_datay = datay
         self.graph = self.plot.plot(datax, datay, color='lightblue')[0]
         self.graph_selections = self.plot.plot([], [], color='orange', linewidth=2, zorder=5)[0]
 
