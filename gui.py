@@ -285,6 +285,18 @@ class GUI:
         print("Saving every changes to files...")
 
         try:
+            if ProjectManager.blackbox_path == "" or not os.path.exists(ProjectManager.blackbox_path):
+                print("No valid blackbox path defined!")
+                folder_path = filedialog.askdirectory(initialdir=ProjectManager.blackbox_path, title="Select the blackbox folder")
+                ProjectManager.blackbox_path = folder_path
+                if not os.path.exists(folder_path):
+                    print("No valid blackbox path selected, cancelling the operation...")
+                    return
+        except:
+            print("Error while choosing a blackbox path, exiting...")
+            return
+
+        try:
             saved = self.save_project()
             if not saved:
                 print("Cancelled the saving of project modifications!")

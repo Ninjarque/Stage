@@ -28,6 +28,11 @@ class FileManager:
     @staticmethod
     def pack(project, file_path, file_name, relocate_files):
         file_name = file_name + FileManager.DEFAULT_PROJECT_EXTENSION
+
+        exists = False
+        if os.path.exists(file_path):
+            exists = True
+        
         archive_name = os.path.join(file_path, file_name)
         tmp_dir = tempfile.mkdtemp()
         tmp_archive_dir = os.path.join(tmp_dir, 'temp_archive')
@@ -37,14 +42,16 @@ class FileManager:
         os.makedirs(tmp_archive_dir, exist_ok=True)
 
         if relocate_files:
-            for curve in project.curves:
-                shutil.copy(curve.file_path, os.path.join(tmp_archive_dir, os.path.basename(curve.file_path)))
+            if not exists:
+                for curve in project.curves:
+                    shutil.copy(curve.file_path, os.path.join(tmp_archive_dir, os.path.basename(curve.file_path)))
             for bars in project.spikes:
                 bars_path = os.path.join(tmp_archive_dir, os.path.basename(bars.file_path).split('.')[0] + '.asg')
                 bars.file_path = bars.file_path.split('.')[0] + '.asg'
                 saver.write_ASG(bars_path, bars.spikes_data)
                 #shutil.copy(bars.file_path, os.path.join(tmp_archive_dir, os.path.basename(bars.file_path)))
-            project.relocate(file_path)
+            if not exists:
+                project.relocate(file_path)
         
         # Save project JSON
         js = project.to_json_component()

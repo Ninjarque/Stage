@@ -12,9 +12,23 @@ from FileManager import FileManager
 
 from SpikeCluster import *
 import saver
+import loader
 
 PROJECT_VERSION = "1.0.0"
 DEFAULT_PROJECT_NAME = "default_project"
+
+class _ProjectCurve:
+    def __init__(self, file_path):
+        self.file_path = file_path
+
+class _ProjectBar:
+    def __init__(self, file_path):
+        self.file_path = file_path
+        self.spikes_data = []
+        if os.path.exists(file_path):
+            self.spikes_data = loader.parse_ASG(file_path)
+
+
 
 
 class Project:
@@ -89,6 +103,13 @@ class Project:
                 spike.update_file_path(os.path.relpath(new_path, new_dir))
 
         self.backup_identifier = os.path.relpath(new_dir, os.path.dirname(self.name))
+
+    @staticmethod
+    def make_project(curve_file, spikes_file):
+        proj = Project()
+        proj.curves = [_ProjectCurve(curve_file)]
+        proj.spikes = [_ProjectBar(spikes_file)]
+        return proj
 
     def pack(self, file_path, file_name, relocate_files):
         FileManager.pack(self, file_path, file_name, relocate_files)

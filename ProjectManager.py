@@ -7,6 +7,8 @@ import shutil
 from JsonComponent import *
 from Project import *
 
+from StatsDialog import StatsDialog
+
 
 CONFIG_EXTENSION = ".json"
 
@@ -21,6 +23,7 @@ BACKUP_DIR = "BACKUPS"
 class ProjectManager:
     current_project = None
     current_project_path = ""
+    blackbox_path = ""
     config = None
 
     do_auto_save = True
@@ -65,6 +68,7 @@ class ProjectManager:
             print("Couldn't find project to auto load at path:", path)
             return
         ProjectManager.current_project = Project.load(path, curve_plot, bars_plot)
+        ProjectManager.display_stats(ProjectManager.current_project)
         ProjectManager.current_project_path = path
         ProjectManager.save_config()
 
@@ -85,6 +89,7 @@ class ProjectManager:
         config = ProjectManager._load_or_create_config()
         backup_entry = {"timestamp": timestamp, "backup_path": backup_file_path}
         config.properties.setdefault(BACKUP_KEY, []).append(backup_entry)
+        config.properties[""]
         config.save(APPLICATION_CONFIG_PATH)
         print(f"Created backup for project '{project.name}' at '{backup_file_path}'")
 
@@ -112,6 +117,7 @@ class ProjectManager:
         if not ProjectManager.config:
             ProjectManager.config = JsonComponent("config")
         ProjectManager.config.properties["last_project_path"] = ProjectManager.current_project_path
+        ProjectManager.config.properties["blackbox_path"] = ProjectManager.blackbox_path
         ProjectManager.config.save(APPLICATION_CONFIG_PATH)
 
     @staticmethod
@@ -119,6 +125,10 @@ class ProjectManager:
         if os.path.isfile(APPLICATION_CONFIG_PATH):
             ProjectManager.config = JsonComponent.load(APPLICATION_CONFIG_PATH)
             ProjectManager.current_project_path = ProjectManager.config.properties.get("last_project_path", "")
+            ProjectManager.blackbox_path = ProjectManager.config.properties.get("blackbox_path", "")
+            if not ProjectManager.blackbox_path or os.path.exists(ProjectManager.blackbox_path):
+                print("Blackbox path empty or invalid! Resetting blackbox's path...")
+                ProjectManager.blackbox_path = ""
             if ProjectManager.current_project_path:
                 ProjectManager.load_project(ProjectManager.current_project_path, curve_plot, bars_plot)
                 return True
@@ -143,6 +153,15 @@ class ProjectManager:
     def disable_auto_save():
         ProjectManager.do_auto_save = False
 
+
+    def display_stats(project):
+        if project == None:
+            print("Can't display statistics for empty or null project!")
+            return
+        stats = StatsDialog(project)
+        stats.run()
+
+        
     
     '''
     UTILITY FUNCTIONS TO BETTER ACCESS THE CURRENT INSTANCE OF PROJECT:
