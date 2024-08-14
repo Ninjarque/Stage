@@ -192,3 +192,27 @@ class ChunkMaker:
             startI = endI
 
         return spikesData
+
+    @staticmethod
+    def compute_spikes_cluster_len(spikeCluster):
+        return spikeCluster.spikesX[-1] - spikeCluster.spikesX[0]
+
+
+    @staticmethod
+    def make_reccursive_splits(datax, datay, splits_per_iterations, total_splits, precision):
+        spikesData = ChunkMaker.make_splits(datax, datay, splits_per_iterations, precision)
+        spikesToIterateOn = spikesData.copy()
+        spikesToIterateOn.sort(key=ChunkMaker.compute_spikes_cluster_len, reverse=True)
+        while len(spikesData) < total_splits:
+            if len(spikesToIterateOn) == 0:
+                break
+            spike = spikesToIterateOn.pop(index=0)
+            newSplits = ChunkMaker.make_splits(spike.spikesX, spike.spikesY, splits_per_iterations, precision)
+            if len(newSplits) > 1:
+                for i in range(len(newSplits)):
+                    spikesToIterateOn.append(newSplits[i])
+                spikesToIterateOn.sort(key=ChunkMaker.compute_spikes_cluster_len, reverse=True)
+            elif len(newSplits) == 1:
+                spikesData.append(newSplits[0])
+        
+        return spikesData
