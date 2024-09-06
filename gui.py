@@ -65,24 +65,19 @@ class NavigationToolbar(NavigationToolbar2Tk):
 
 class GUI:
     def __init__(self, master):
+        """
+        Initialize the main window GUI and all of its components.
+
+        :param master: The main window of the GUI
+
+        :return: None
+        """
+
         self.master = master
         self.master.title('Main Window')
         self.master.geometry("1000x800")
 
         self.plots = []
-
-        # Button to display the plot
-        #self.plot_button = Button(master=self.master, command=self.toggle_curves, height=2, width=20, text="Toggle curve selection")
-        #self.plot_button.pack()
-
-        #self.match_button = Button(master=self.master, command=self.match_regions, height=2, width=20, text="Match selected regions")
-        #self.match_button.pack()
-
-        #self.match_spikes_button = Button(master=self.master, command=self.match_spikes, height=2, width=20, text="Match spikes given regions")
-        #self.match_spikes_button.pack()
-
-        #self.run_blackbox_button = Button(master=self.master, command=self.run_blackbox, height=2, width=20, text="Run black box button")
-        #self.run_blackbox_button.pack()
 
         # Menu
         menu = Menu(master)
@@ -136,10 +131,7 @@ class GUI:
         ProjectManager.init_project()
         ProjectManager.auto_load(self.graphs_plot, self.bars_plot)
 
-        #self.open_project(self.project)
         self.load_project_data()
-
-        #self.test()
 
     def toggle_curves(self):
         if len(self.plots) == 0:
@@ -153,25 +145,6 @@ class GUI:
             i += 1
         plot_i = (plot_i + 1) % len(self.plots)
         self.select(self.plots[plot_i])
-
-    def test(self):
-        #large test
-        self.plots[1].set_ranges([(1032.110, 1032.125)])
-        self.plots[0].set_ranges([(1032.020, 1032.160)])
-        
-        #second spike small test
-        #self.plots[1].set_ranges([(1032.240, 1032.245)])
-        #self.plots[0].set_ranges([(1032.265, 1032.280)])
-
-        #third spike large test
-        #self.plots[1].set_ranges([(1032.350, 1032.370)])
-        #self.plots[0].set_ranges([(1032.265, 1032.550)])
-
-        #fourth spike huge test
-        #self.plots[1].set_ranges([(1032.800, 1032.900)])
-        #self.plots[0].set_ranges([(1032.550, 1033.150)])
-
-        pass
 
     def match_regions(self):
         if len(self.plots) <= 1:
@@ -227,6 +200,7 @@ class GUI:
         #filterTree = FilterTree.build()
         self.canvas.draw()
         pass
+
     def match_spikes(self):
         if len(self.plots) > 1 and len(self.bars) > 1:
             curve_names = [curve.name for curve in ProjectManager.current_project.curves]
@@ -282,6 +256,12 @@ class GUI:
         pass
 
     def run_blackbox(self):
+        """
+        Run the blackbox algorithm on the current project.
+
+        Returns:
+           None
+        """
         print("Saving every changes to files...")
 
         try:
@@ -400,8 +380,10 @@ class GUI:
         for bar in self.bars:
             bar.clear()
 
-        self.plots.clear()
-        self.bars.clear()
+        self.init_plots()
+
+        #self.plots.clear()
+        #self.bars.clear()
 
         # Clear the canvas
         #self.graphs_plot.clear()
@@ -437,24 +419,7 @@ class GUI:
             plot_i += 1
 
         self.canvas.draw()
-
-        '''
-
-        paths = ProjectManager.get_curve_paths()
-        themes = ProjectManager.get_curve_themes()
-        for i in range(len(paths)):
-            p = paths[i]
-            t = themes[i]
-            curve = self.open_curve_file(p, t)
-        paths = ProjectManager.get_spikes_paths()
-        themes = ProjectManager.get_spikes_themes()
-        for i in range(len(paths)):
-            p = paths[i]
-            t = themes[i]
-            bars = self.open_spikes_file(p, t)
-
-        '''
-            
+        
         print("Done loading project!")
 
     def open_curve(self):
@@ -558,105 +523,7 @@ class GUI:
     def link_plots_spikes(self):
         app = LinkCurvesSpikesDialog(ProjectManager.current_project)
         app.run()
-
-
-    '''
-    def plot(self):
-        # the figure that will contain the plot
-        fig = Figure(figsize=(10, 8), dpi=100)
-
-        gs = GridSpec(3, 1, figure=fig)  # Divide figure into 3 rows, 1 column
-
-        self.bars_plot = fig.add_subplot(gs[0, 0])  # Top small subplot for bars
-        self.graphs_plot = fig.add_subplot(gs[1:, 0])  # Larger subplot for graphs
-
-        # Assuming you have already defined these somewhere
-        data1_x, data1_y = self.get_data1()
-        data2_x, data2_y = self.get_data2()
-
-        spikes_data1, spikes_xdata1 = self.get_spikes_data1()
-        spikes_data2, spikes_xdata2 = self.get_spikes_data2()
-
-        # creating the Tkinter canvas containing the Matplotlib figure
-        self.canvas = FigureCanvasTkAgg(fig, master=self.master)
-        self.canvas.draw()
-
-        self.bars = [
-        CanvasSpikes(self.bars_plot, spikes_data1, spikes_xdata1, DefaultTheme.get_palette("bars1")),
-        CanvasSpikes(self.bars_plot, spikes_data2, spikes_xdata2, DefaultTheme.get_palette("bars2")),
-        ]
-
-        self.plots = [
-        PlotCurve(
-            self.graphs_plot, self.graph1_spikes_clusters, 
-            0.02,
-            DefaultTheme.get_palette("graph1"),
-            RANGE_MODE_CLUSTERS
-        ),
-        PlotCurve(
-            self.graphs_plot, self.graph2_spikes_clusters, 
-            0.02,
-            DefaultTheme.get_palette("graph2"),
-            RANGE_MODE_CLUSTERS
-        )
-        ]
-        plot_i = 0
-        for plot in self.plots:
-            if plot_i == 1:
-                plot.enable()
-                plot.set_xoffset(0.5)
-                plot.set_zorder(1)
-            else:
-                plot.disable()
-                plot.set_zorder(0)
-            plot_i += 1
-        bar_i = 0
-        #check linking name or something
-        for bars in self.bars:
-            plot = self.plots[bar_i]
-            if plot.enabled:
-                bars.enable()
-            else:
-                bars.disable()
-            plot.link_plotbar(bars)
-            bar_i += 1
-
-        #graphs_plot.callbacks.connect('xlim_changed', self.on_xlims_change_graph)
-        self.graphs_plot.callbacks.connect('ylim_changed', self.on_ylims_change)
         
-        # Connect xlim changes
-        self.bars_plot.callbacks.connect('xlim_changed', lambda ax: self.on_xlims_change(ax, self.graphs_plot))
-        self.graphs_plot.callbacks.connect('xlim_changed', lambda ax: self.on_xlims_change(ax, self.bars_plot))
-
-        #bars_plot.callbacks.connect('xlim_changed', self.on_xlims_change_bars)
-        #bars_plot.callbacks.connect('ylim_changed', self.on_ylims_change_bars)
-  
-        # Connect the mouse movement event to the canvas
-        self.canvas.mpl_connect('motion_notify_event', self.mouse_move)
-        self.canvas.mpl_connect('button_press_event', self.on_click)
-        self.canvas.mpl_connect('button_release_event', self.on_release)
-
-        self.canvas.mpl_connect('key_press_event', self.on_key_press)
-        self.canvas.mpl_connect('key_press_event', self.on_key_release)
-        
-        # placing the canvas on the Tkinter window
-        self.canvas.get_tk_widget().pack()
-
-        # creating the Matplotlib toolbar
-        self.toolbar = NavigationToolbar(self.canvas, self.master)
-        self.toolbar.zoom()
-        self.toolbar.pan()
-        self.toolbar.update()
-        self.canvas.get_tk_widget().pack()
-
-        x_lims = self.graphs_plot.get_xlim()
-        print(x_lims)
-        print(self.bars_plot.get_xlim())
-        self.bars_plot.set_xlim(x_lims)
-
-        self.canvas.draw()
-    '''
-
     def init_plots(self):
         # the figure that will contain the plot
         fig = Figure(figsize=(10, 8), dpi=100)
