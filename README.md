@@ -1,4 +1,4 @@
-# Spectral Matching Labeling Application
+# Spectral Matching Application
 
 ## Description
 
