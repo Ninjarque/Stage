@@ -58,18 +58,16 @@ class SpikeTree:
         s = 1
         if relativeMargin < 0:
             s = -1
-        match targetProperty:
-            case "i":
-                mi = [i for i in cluster.bars if i.i * s < targetValue * s + relativeMargin]
-                return len(mi) > 0
-            case "x":
-                mx = [x for x in cluster.bars if x.x < targetValue]
-                return len(mx) > 0
-            case "y":
-                my = [y for y in cluster.bars if y.y < targetValue]
-                return len(my) > 0
-            case _:
-                return True
+        if targetProperty == "i":
+            mi = [i for i in cluster.bars if i.i * s < targetValue * s + relativeMargin]
+            return len(mi) > 0
+        if targetProperty == "x":
+            mx = [x for x in cluster.bars if x.x < targetValue]
+            return len(mx) > 0
+        if targetProperty == "y":
+            my = [y for y in cluster.bars if y.y < targetValue]
+            return len(my) > 0
+        return True
 
     def updateSplitVote(self, cluster):
         self._splitVoteImax = max(self._splitVoteImax, cluster.startI)

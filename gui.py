@@ -8,9 +8,6 @@ from matplotlib.gridspec import GridSpec
 
 from BlackboxManager import *
 
-'''
-MAINTAIN THOSE IMPORTS UP TO DATE
-'''
 from LinkCurvesSpikesDialog import *
 from MatchParametersDialog import *
 
@@ -29,19 +26,7 @@ from themes import *
 from CanvasSpikes import *
 from FilterTree import *
 
-
-class Spectre:
-    def __init__(self):
-        pass
-
-class Spikes:
-    def __init__(self):
-        pass
-
-
-
 class NavigationToolbar(NavigationToolbar2Tk):
-
     def enable(self):
         self.enabled = True
         
@@ -50,6 +35,12 @@ class NavigationToolbar(NavigationToolbar2Tk):
 
     #Only pass on events when enabled and delay requests to Navbar so that the graphics overlays can handle them first
     def _zoom_pan_handler(self, event):
+        """
+        Handle zoom and pan events based on the state of the toolbar.
+
+        :param event: The event being handled
+        :return: None
+        """
         event.requeued = False if not hasattr(event, 'requeued') else True
         if not hasattr(self, 'enabled'):
             self.enabled = True
@@ -69,29 +60,54 @@ class GUI:
         Initialize the main window GUI and all of its components.
 
         :param master: The main window of the GUI
-
         :return: None
         """
-
         self.master = master
         self.master.title('Main Window')
         self.master.geometry("1000x800")
 
-        self.plots = []
+        self.reload_required = False
 
         # Menu
-        menu = Menu(master)
+        self.init_menu()
+        
+        # Utility
+        self.start_click_pos = None
+        self.moved_too_much = False
+        
+        # Limits
+        self.x_range = 0.0
+        self.y_range = 0.0
+
+        # Initialize plots
+        self.plots = []
+        self.bars = []
+        self.init_plots()
+
+        ProjectManager.init_project()
+        ProjectManager.auto_load(self.graphs_plot, self.bars_plot)
+
+        self.load_project_data()
+
+
+    def init_menu(self):
+        """
+        Initialize the menu bar and its options.
+
+        :return: None
+        """
+        menu = Menu(self.master)
         self.master.config(menu=menu)
         filemenu = Menu(menu)
         menu.add_cascade(label='File', menu=filemenu)
         filemenu.add_command(label='New project', command=self.new_project)
-        filemenu.add_command(label='Open project', command=self.load_project)
+        filemenu.add_command(label='Open project', command=self.load_project_reload)
         filemenu.add_command(label='Save project', command=self.save_project)
         filemenu.add_separator()
         filemenu.add_command(label='Open curve', command=self.open_curve)
         filemenu.add_command(label='Open spikes', command=self.open_spikes)
         filemenu.add_separator()
-        filemenu.add_command(label='Exit', command=master.quit)
+        filemenu.add_command(label='Exit', command=self.master.quit)
 
         edit = Menu(menu)
         menu.add_cascade(label='Edit', menu=edit)
@@ -100,7 +116,6 @@ class GUI:
         link = Menu(edit)
         edit.add_cascade(label='Link', menu=link)
         link.add_command(label='Link curves to spikes', command=self.link_plots_spikes)
-        
 
         run = Menu(menu)
         menu.add_cascade(label='Run', menu=run)
@@ -114,24 +129,6 @@ class GUI:
         helpmenu = Menu(menu)
         menu.add_cascade(label='Help', menu=helpmenu)
         helpmenu.add_command(label='About')
-
-        # Utility
-        self.start_click_pos = None
-        self.moved_too_much = False
-
-        # Limits
-        self.x_range = 0.0
-        self.y_range = 0.0
-
-        self.plots = []
-        self.bars = []
-
-        self.init_plots()
-
-        ProjectManager.init_project()
-        ProjectManager.auto_load(self.graphs_plot, self.bars_plot)
-
-        self.load_project_data()
 
     def toggle_curves(self):
         if len(self.plots) == 0:
@@ -147,59 +144,87 @@ class GUI:
         self.select(self.plots[plot_i])
 
     def match_regions(self):
+        # Ensure there are enough plots to perform matching
         if len(self.plots) <= 1:
-            print("Not enough curves loaded for matching, requieres (2) at least!")
+            print("Not enough curves loaded for matching, requires (2) at least!")
             return
-        
+
+        # Initialize matching parameters dialog
         app = MatchParametersDialog(ProjectManager.current_project)
         app.run()
+
+        # Exit if the user didn't validate the matching operation
         if not app.validated:
             print("Cancelled matching...")
             return
+
+        # Get curve names from the current project
         curve_names = [curve.name for curve in ProjectManager.current_project.curves]
 
         target_plot_index = 1
         current_plot_index = 0
-        
 
+        # Identify the target plot index
         if ProjectManager.current_project.target_curve != "" and ProjectManager.current_project.target_curve in curve_names:
             target_plot_index = curve_names.index(ProjectManager.current_project.target_curve)
         else:
             print("Didn't have a proper target curve, exiting match operation...")
             return
+
+        # Identify the current plot index
         if ProjectManager.current_project.current_curve != "" and ProjectManager.current_project.current_curve in curve_names:
             current_plot_index = curve_names.index(ProjectManager.current_project.current_curve)
         else:
             print("Didn't have a proper current curve, exiting match operation...")
             return
 
+        # Retrieve the target and current plots
         target_plot = self.plots[target_plot_index]
         current_plot = self.plots[current_plot_index]
 
+        # Get ranges and clusters from the plots
         target_rangex, target_rangey, target_clusters = target_plot.get_ranges()
         current_rangex, current_rangey, current_clusters = current_plot.get_ranges()
-        if not target_clusters or not current_clusters:
-            print("no target_clusters/current_clusters")
-            return
-        target_cluster = SpikeCluster.merge(target_clusters)
-        target_cluster, new_start_target, new_end_target = SpikeCluster.truncate(target_cluster, 0.2, 0.15)
 
+        # Ensure clusters exist for both target and current plots
+        if not target_clusters or not current_clusters:
+            print("No target_clusters or current_clusters found.")
+            return
+
+        # Apply thresholding function to filter target clusters
+        threshold = 0.5  # Define a threshold (modify as needed)
+        target_clusters = [cluster for cluster in target_clusters if self.check_threshold(cluster, threshold)]
+
+        if not target_clusters:
+            print("No target clusters passed the threshold, exiting...")
+            return
+
+        # Merge the current clusters (keep as is)
         current_clusters = SpikeCluster.merge(current_clusters)
 
-        matchRandom = MatchingStep(RandomFeatureExtractor(100, 200), 1.0, 1.0)#0.5, 1.0, 0.5)
-        matchDistance = MatchingStep(DistanceFeatureExtractor([0.66, 0.75, 1.0, 1.25, 1.5, 1.66, 1.75], 1.0, 10.0), 0.5, 1.0)
-        matchShape = MatchingStep(ShapeFeatureExtractor([0.5, 0.75, 1.0, 1.5, 1.75]), 0.5, 1.0)
-        matcher = Matcher(matchDistance)#matchingStep1)#, matchingStep2)
-        target_start, target_end, x_start, x_end, target_tree, current_tree = matcher.match(target_cluster, current_clusters, 3)#3)
-        
-        #target_plot.set_ranges([(target_cluster.spikesX[target_start], target_cluster.spikesX[target_end])])
-        target_plot.set_ranges([(target_start, target_end)])
-        print("selecting range in current plot of", x_start, ":", x_end)
-        current_plot.set_ranges([(x_start, x_end)])
+        # Loop over individual target clusters and match with current clusters
+        for target_cluster in target_clusters:
+            target_cluster, new_start_target, new_end_target = SpikeCluster.truncate(target_cluster, 0.2, 0.15)
             
-        #filterTree = FilterTree.build()
+            # Matching steps and matcher instantiation
+            match_random = MatchingStep(RandomFeatureExtractor(100, 200), 1.0, 1.0)
+            match_distance = MatchingStep(DistanceFeatureExtractor([0.66, 0.75, 1.0, 1.25, 1.5, 1.66, 1.75], 1.0, 10.0), 0.5, 1.0)
+            match_shape = MatchingStep(ShapeFeatureExtractor([0.5, 0.75, 1.0, 1.5, 1.75]), 0.5, 1.0)
+            matcher = Matcher(match_distance)
+
+            # Perform matching
+            target_start, target_end, x_start, x_end, target_tree, current_tree = matcher.match(target_cluster, current_clusters, 3)
+            
+            # Set ranges on the plots
+            target_plot.set_ranges([(target_start, target_end)])
+            print("Selecting range in current plot:", x_start, ":", x_end)
+            current_plot.set_ranges([(x_start, x_end)])
+
+            # Remove the matched part from current_clusters
+            current_clusters = SpikeCluster.remove_range_x(current_clusters, x_start, x_end)
+
+        # Redraw the canvas
         self.canvas.draw()
-        pass
 
     def match_spikes(self):
         if len(self.plots) > 1 and len(self.bars) > 1:
@@ -346,7 +371,7 @@ class GUI:
 
     def new_project(self):
         ProjectManager.init_project()
-        self.load_project_data()
+        self.load_project_data(reload=True)
         ProjectManager.auto_save()
 
     def open_project(self):
@@ -368,19 +393,28 @@ class GUI:
             print("Saved", ProjectManager.current_project.name, "successfully!")
         return saved
 
-    def load_project(self):
+    def load_project(self, reload=False):
         ProjectManager.load_project_dialog(self.graphs_plot, self.bars_plot)
-        self.load_project_data()
+        self.load_project_data(reload=reload)
 
-    def load_project_data(self):
+    def load_project_reload(self):
+        ProjectManager.load_project_dialog(self.graphs_plot, self.bars_plot)
+        self.load_project_data(reload=True)
+
+    def load_project_data(self, reload=False):
         print("Setting project data...")
+
+        if reload:
+            self.reload_required = True
+            self.master.quit()  # Exit the main loop
+            return
 
         for curve in self.plots:
             curve.clear()
         for bar in self.bars:
             bar.clear()
 
-        self.init_plots()
+        #self.init_plots()
 
         #self.plots.clear()
         #self.bars.clear()
@@ -725,7 +759,16 @@ class GUI:
         self.toolbar.enable()
         self.canvas.draw()
 
-# Main Tkinter window
-window = Tk()
-app = GUI(window)
-window.mainloop()
+if __name__ == "__main__":
+    while True:
+        window = Tk()
+        app = GUI(window)
+        window.mainloop()  # Run the main loop
+
+        if app.reload_required:
+            app.master.destroy()
+            print("Reloading GUI instance...")
+            # The loop will continue and create a new instance
+            del app
+        else:
+            break

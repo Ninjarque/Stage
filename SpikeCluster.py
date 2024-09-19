@@ -93,6 +93,13 @@ class SpikeCluster:
 
         return SpikeCluster(startI, countI, spikesX, spikesY, bars), startI, endI
     
+    def remove_range_x(cluster, xstart, xend):
+        startI = dichotomy.nearest_index(xstart, cluster.spikesX)
+        endI = dichotomy.nearest_index(xend, cluster.spikesX) + 1
+        left = SpikeCluster(0, startI - 1, cluster.spikesX[:startI], cluster.spikesY[:startI], [])
+        right = SpikeCluster(endI, len(cluster.spikesY) - endI, cluster.spikesX[endI:], cluster.spikesY[endI:], [])
+        return cluster.merge([left, right])
+
     def truncate_range_x(cluster, xstart, xend):
         startI = dichotomy.nearest_index(xstart, cluster.spikesX)
         endI = dichotomy.nearest_index(xend, cluster.spikesX) + 1

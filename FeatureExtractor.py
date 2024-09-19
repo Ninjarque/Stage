@@ -1,5 +1,5 @@
 import numpy as np
-from noise import pnoise1
+#from noise import pnoise1
 import random
 import matplotlib.pyplot as plt
 
@@ -14,12 +14,12 @@ FEATURE_EXTRACTOR_TRUNCATE_RATIO = 0.01 #0.0
 
 DEBUG_FEATURE = False
 
+'''
 def generate_noise_curve(length, scale=1.0, octaves=4, persistence=0.5, lacunarity=2.0, seed=None):
     if seed is not None:
         random.seed(seed)
     return [pnoise1(i / scale, octaves=octaves, persistence=persistence, lacunarity=lacunarity) for i in range(length)]
 
-'''
 def generate_noise_curve(length, scale=1.0, frequency=1.0, octaves=4, persistence=0.5, lacunarity=2.0, seed=None):
     if seed is not None:
         random.seed(seed)
